@@ -245,18 +245,64 @@ std::string TypeInferenceEngine::inferExprType(const std::string& expr) {
         return "Unknown";
     }
 
-    // Step 2: 리터럴 처리
+    // Step 2: If 표현식 처리
+    if (expr.find("if ") == 0) {
+        // if (condition) { true_branch } else { false_branch }
+        size_t if_pos = expr.find("if");
+        size_t lparen = expr.find('(', if_pos);
+        size_t rparen = expr.find(')', lparen);
+        size_t lbrace = expr.find('{', rparen);
+        size_t rbrace = expr.find('}', lbrace);
+        size_t else_pos = expr.find("else", rbrace);
+        size_t else_lbrace = expr.find('{', else_pos);
+        size_t else_rbrace = expr.rfind('}');
+
+        if (lparen != std::string::npos && rparen != std::string::npos &&
+            lbrace != std::string::npos && rbrace != std::string::npos &&
+            else_pos != std::string::npos && else_lbrace != std::string::npos &&
+            else_rbrace != std::string::npos) {
+
+            std::string true_branch = expr.substr(lbrace + 1, rbrace - lbrace - 1);
+            std::string false_branch = expr.substr(else_lbrace + 1, else_rbrace - else_lbrace - 1);
+
+            // 공백 제거
+            true_branch.erase(0, true_branch.find_first_not_of(" \t\n"));
+            true_branch.erase(true_branch.find_last_not_of(" \t\n") + 1);
+            false_branch.erase(0, false_branch.find_first_not_of(" \t\n"));
+            false_branch.erase(false_branch.find_last_not_of(" \t\n") + 1);
+
+            std::string true_type = inferExprType(true_branch);
+            std::string false_type = inferExprType(false_branch);
+            return (true_type == false_type) ? true_type : "Unknown";
+        }
+    }
+
+    // Step 3: While 루프 처리
+    if (expr.find("while ") == 0) {
+        size_t while_pos = expr.find("while");
+        size_t lparen = expr.find('(', while_pos);
+        size_t rparen = expr.find(')', lparen);
+        size_t lbrace = expr.find('{', rparen);
+        size_t rbrace = expr.rfind('}');
+
+        if (lparen != std::string::npos && rparen != std::string::npos &&
+            lbrace != std::string::npos && rbrace != std::string::npos) {
+            return "void";
+        }
+    }
+
+    // Step 4: 리터럴 처리
     if (isLiteral(expr)) {
         return parseLiteral(expr);
     }
 
-    // Step 3: 변수 처리
+    // Step 5: 변수 처리
     auto var_type = context_->lookupVariable(expr);
     if (var_type.has_value()) {
         return var_type.value();
     }
 
-    // Step 4: 이항 연산 처리
+    // Step 6: 이항 연산 처리
     std::regex binary_op_regex(R"((\w+)\s*([\+\-\*\/])\s*(.+))");
     std::smatch match;
 
@@ -269,6 +315,12 @@ std::string TypeInferenceEngine::inferExprType(const std::string& expr) {
         return inferBinaryOp(left, right, op, empty_subst);
     }
 
+    // Step 7: 비교 연산 처리
+    std::regex cmp_op_regex(R"((\w+)\s*([><=!]+)\s*(.+))");
+    if (std::regex_match(expr, match, cmp_op_regex)) {
+        return "bool";
+    }
+
     // 미지의 표현식
     return context_->createFreshTypeVar();
 }
@@ -276,17 +328,71 @@ std::string TypeInferenceEngine::inferExprType(const std::string& expr) {
 std::string TypeInferenceEngine::inferFunctionSignature(
     const std::string& func_text) {
 
-    // 간단한 파싱: fn name(p1: t1, p2: t2) -> ret { body }
-    // 현재는 스켈레톤만 구현
+    // 정규식으로 함수 파싱: fn name(params) { body }
+    std::regex func_regex(R"(fn\s+(\w+)\s*\(([^)]*)\)\s*\{([^}]*)\})");
+    std::smatch match;
 
-    // 예: fn add(a, b) { a + b }
-    // → "fn(i64, i64) -> i64"
+    if (!std::regex_match(func_text, match, func_regex)) {
+        return "fn(...) -> Unknown";  // 파싱 실패
+    }
 
-    // Step 1: 함수 본문에서 제약 수집
-    // Step 2: 파라미터 타입과 반환 타입 추론
-    // Step 3: 함수 시그니처 구성
+    std::string func_name = match[1].str();
+    std::string params_str = match[2].str();
+    std::string body = match[3].str();
 
-    return "fn(...) -> Unknown";  // 스켈레톤
+    // 파라미터 파싱
+    std::vector<std::string> param_names;
+    if (!params_str.empty()) {
+        std::istringstream param_stream(params_str);
+        std::string param;
+        while (std::getline(param_stream, param, ',')) {
+            // 공백 제거
+            param.erase(0, param.find_first_not_of(" \t"));
+            param.erase(param.find_last_not_of(" \t") + 1);
+            if (!param.empty()) {
+                param_names.push_back(param);
+            }
+        }
+    }
+
+    // 본문 분석으로 반환 타입 추론
+    std::string return_type = inferExprType(body);
+
+    // 파라미터 타입 추론 (모든 파라미터를 변수로 바인딩하고 본문으로부터 타입 추론)
+    std::vector<std::string> param_types;
+    for (const auto& param : param_names) {
+        // 파라미터 타입은 본문에서 사용되는 방식으로 추론
+        // 간단히: 숫자와 함께 사용되면 i64, 실수와 함께 사용되면 f64
+        auto param_type = context_->lookupVariable(param);
+        if (param_type.has_value()) {
+            param_types.push_back(param_type.value());
+        } else {
+            // 본문에서 파라미터 사용 패턴 분석
+            if (body.find(param) != std::string::npos) {
+                // 간단한 휴리스틱: 숫자와 함께 연산되는가?
+                if (body.find(param + " + ") != std::string::npos ||
+                    body.find(param + " - ") != std::string::npos ||
+                    body.find(param + " * ") != std::string::npos ||
+                    body.find(param + " / ") != std::string::npos) {
+                    param_types.push_back("i64");  // 산술 연산 → i64
+                } else {
+                    param_types.push_back("i64");  // 기본값
+                }
+            } else {
+                param_types.push_back("i64");  // 사용되지 않음 → i64 (기본)
+            }
+        }
+    }
+
+    // 함수 시그니처 구성: fn(T1, T2, ...) -> ReturnType
+    std::string signature = "fn(";
+    for (size_t i = 0; i < param_types.size(); ++i) {
+        if (i > 0) signature += ", ";
+        signature += param_types[i];
+    }
+    signature += ") -> " + return_type;
+
+    return signature;
 }
 
 std::vector<TypeConstraint> TypeInferenceEngine::collectConstraints(

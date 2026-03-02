@@ -215,6 +215,117 @@ void additional_tests() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// Category 6: Function Signature Inference (3 tests)
+// ════════════════════════════════════════════════════════════════════════════
+
+void category_6_function_signatures() {
+    std::cout << "\n▌ Category 6: Function Signature Inference (함수 시그니처)\n";
+    std::cout << "════════════════════════════════════════════════════════════════\n";
+
+    {
+        TypeInferenceEngine engine;
+        std::string sig = engine.inferFunctionSignature("fn add(a, b) { a + b }");
+        // Should be: fn(i64, i64) -> i64 or similar
+        assert(sig.find("fn") == 0 && sig.find("i64") != std::string::npos);
+        std::cout << "  ✓ infer_simple_function: " << sig << "\n";
+        test_count++;
+        pass_count++;
+    }
+
+    {
+        TypeInferenceEngine engine;
+        std::string sig = engine.inferFunctionSignature("fn identity(x) { x }");
+        assert(sig.find("fn") == 0);
+        std::cout << "  ✓ infer_identity_function: " << sig << "\n";
+        test_count++;
+        pass_count++;
+    }
+
+    {
+        TypeInferenceEngine engine;
+        std::string sig = engine.inferFunctionSignature("fn multiply(x, y) { x * y }");
+        assert(sig.find("fn") == 0 && sig.find("i64") != std::string::npos);
+        std::cout << "  ✓ infer_multiply_function: " << sig << "\n";
+        test_count++;
+        pass_count++;
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Category 7: Control Flow Type Inference (3 tests)
+// ════════════════════════════════════════════════════════════════════════════
+
+void category_7_control_flow() {
+    std::cout << "\n▌ Category 7: Control Flow Type Inference (제어 흐름)\n";
+    std::cout << "════════════════════════════════════════════════════════════════\n";
+
+    {
+        TypeInferenceEngine engine;
+        std::string type = engine.inferExprType("if (true) { 10 } else { 20 }");
+        assert(type == "i64");
+        std::cout << "  ✓ infer_if_expression: if-else → i64\n";
+        test_count++;
+        pass_count++;
+    }
+
+    {
+        TypeInferenceEngine engine;
+        std::string type = engine.inferExprType("while (true) { x = x + 1 }");
+        assert(type == "void");
+        std::cout << "  ✓ infer_while_loop: while → void\n";
+        test_count++;
+        pass_count++;
+    }
+
+    {
+        TypeInferenceEngine engine;
+        std::string type = engine.inferExprType("5 > 3");
+        assert(type == "bool");
+        std::cout << "  ✓ infer_comparison: > → bool\n";
+        test_count++;
+        pass_count++;
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Category 8: Advanced Type Inference (3 tests)
+// ════════════════════════════════════════════════════════════════════════════
+
+void category_8_advanced() {
+    std::cout << "\n▌ Category 8: Advanced Type Inference (고급 추론)\n";
+    std::cout << "════════════════════════════════════════════════════════════════\n";
+
+    {
+        TypeInferenceEngine engine;
+        engine.bindVariable("x", "i64");
+        std::string type = engine.inferExprType("x == 5");
+        assert(type == "bool");
+        std::cout << "  ✓ infer_equality_check: x == 5 → bool\n";
+        test_count++;
+        pass_count++;
+    }
+
+    {
+        TypeInferenceEngine engine;
+        std::string type = engine.inferExprType("if (true) { 42 } else { 0 }");
+        assert(type == "i64");
+        std::cout << "  ✓ infer_if_with_literals: if-else → i64\n";
+        test_count++;
+        pass_count++;
+    }
+
+    {
+        TypeInferenceEngine engine;
+        engine.bindVariable("n", "i64");
+        std::string type = engine.inferExprType("n != 0");
+        assert(type == "bool");
+        std::cout << "  ✓ infer_inequality_check: n != 0 → bool\n";
+        test_count++;
+        pass_count++;
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // Main Test Runner
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -233,6 +344,9 @@ int main() {
     category_4_literal_operations();
     category_5_context_constraints();
     additional_tests();
+    category_6_function_signatures();
+    category_7_control_flow();
+    category_8_advanced();
 
     // Print summary
     std::cout << "\n";
