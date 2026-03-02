@@ -306,7 +306,7 @@ export class Evaluator {
   }
 
   private getVariable(name: string, env: Environment): FlValue {
-    let current = env;
+    let current: Environment | undefined = env;
     while (current) {
       if (current.variables.has(name)) {
         return current.variables.get(name)!;

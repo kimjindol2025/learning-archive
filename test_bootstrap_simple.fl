@@ -1,0 +1,55 @@
+# 부트스트랩 인터프리터 기본 테스트
+# 간단한 버전 (배열 문법 제외)
+
+print("=== Test 1: 기본 연산 ===")
+print(1 + 2)
+print(10 - 3)
+print(4 * 5)
+print(20 / 4)
+print(17 % 5)
+
+print("=== Test 2: 문자열 ===")
+print("Hello, FreeLang!")
+print("길이: ")
+print(len("Hello"))
+
+print("=== Test 3: 함수 ===")
+fn add(a, b)
+  return a + b
+
+print("add(5, 3) = ")
+print(add(5, 3))
+
+print("=== Test 4: 조건문 ===")
+fn is_positive(n)
+  if n > 0
+    return 1
+  else
+    return 0
+
+print("is_positive(10) = ")
+print(is_positive(10))
+print("is_positive(-5) = ")
+print(is_positive(-5))
+
+print("=== Test 5: 반복문 ===")
+fn sum_range(n)
+  result = 0
+  for i in 0..n
+    result = result + i
+  return result
+
+print("sum_range(5) = ")
+print(sum_range(5))
+print("sum_range(10) = ")
+print(sum_range(10))
+
+print("=== Test 6: 논리 연산 ===")
+print("5 > 3 = ")
+print(5 > 3)
+print("10 == 10 = ")
+print(10 == 10)
+print("5 != 3 = ")
+print(5 != 3)
+
+print("=== 테스트 완료! ===")
