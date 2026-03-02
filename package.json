@@ -5,7 +5,9 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "test": "jest",
+    "test": "jest --config jest.config.js",
+    "test:jit": "jest --config jest.config.jit.js",
+    "test:all": "npm run test && npm run test:jit",
     "dev": "tsc --watch",
     "run": "node dist/index.js"
   },

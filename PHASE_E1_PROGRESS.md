@@ -59,11 +59,16 @@
 
 ---
 
-## 🧪 **테스트 상태**
+## 🧪 **테스트 상태** ✅ **해결됨**
 
-**현재**: npm test 실행 중 (백그라운드)
+**메인 테스트** (`npm test`): ✅ 통과 (5개 스위트, 63개 테스트, 4.52초)
 
-**예상 결과**: 30개 테스트 통과 예상
+**JIT 테스트** (`npm run test:jit`): 🔄 메모리 격리 중
+
+### 메모리 이슈 해결
+- **문제**: jit.test.ts가 메인 테스트와 메모리 공유로 OOM 발생
+- **해결책**: Jest 설정 분리 (jest.config.js + jest.config.jit.js)
+- **상세**: JIT_TEST_MEMORY_ISSUE.md 참조
 
 **커버리지**:
 - 스택 조작: PUSH, POP, DUP, SWAP ✅
