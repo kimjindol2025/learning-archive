@@ -269,7 +269,15 @@ std::shared_ptr<ASTNode> Parser::parseAssignment() {
 
     if (match(TokenType::ASSIGN)) {
         auto right = parseAssignment();
-        return std::make_shared<BinaryOpNode>(BinaryOp::Assign, expr, right);
+
+        // ✅ FIX: AssignmentNode를 올바르게 생성
+        // expr이 Identifier여야만 assignment의 대상이 될 수 있음
+        if (auto identifier = std::dynamic_pointer_cast<IdentifierNode>(expr)) {
+            return std::make_shared<AssignmentNode>(identifier->name, right);
+        } else {
+            error("Assignment target must be a variable");
+            return expr;
+        }
     }
 
     return expr;
