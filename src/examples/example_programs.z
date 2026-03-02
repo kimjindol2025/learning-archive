@@ -1,0 +1,87 @@
+// Example 1: Hello World
+fn hello_world() {
+    print("Hello, World!\n")
+}
+
+// Example 2: Calculator
+fn add(a, b) { a + b }
+fn sub(a, b) { a - b }
+fn mul(a, b) { a * b }
+fn div(a, b) { a / b }
+
+fn calculate() {
+    let x = add(10, 20)
+    let y = sub(30, 15)
+    let z = mul(x, y)
+    print("10 + 20 = ")
+    print(x)
+    print("\n")
+}
+
+// Example 3: FizzBuzz
+fn fizzbuzz(n) {
+    let i = 1
+    while (i <= n) {
+        if ((i % 15) == 0) {
+            print("FizzBuzz\n")
+        } else if ((i % 3) == 0) {
+            print("Fizz\n")
+        } else if ((i % 5) == 0) {
+            print("Buzz\n")
+        } else {
+            print(i)
+            print("\n")
+        }
+        i = i + 1
+    }
+}
+
+// Example 4: Factorial
+fn factorial(n) {
+    if (n <= 1) {
+        return 1
+    } else {
+        return n * factorial(n - 1)
+    }
+}
+
+fn calculate_factorial() {
+    let result = factorial(5)
+    print("5! = ")
+    print(result)
+    print("\n")
+}
+
+// Example 5: Prime Check
+fn is_prime(n) {
+    if (n <= 1) {
+        return 0
+    }
+    if (n <= 3) {
+        return 1
+    }
+    if ((n % 2) == 0 || (n % 3) == 0) {
+        return 0
+    }
+    let i = 5
+    while (i * i <= n) {
+        if ((n % i) == 0 || (n % (i + 2)) == 0) {
+            return 0
+        }
+        i = i + 6
+    }
+    return 1
+}
+
+fn check_primes() {
+    print("Primes 1-20: ")
+    let i = 2
+    while (i <= 20) {
+        if (is_prime(i)) {
+            print(i)
+            print(" ")
+        }
+        i = i + 1
+    }
+    print("\n")
+}
