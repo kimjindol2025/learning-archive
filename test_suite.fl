@@ -1,0 +1,402 @@
+# ================================================================
+# FreeLang Comprehensive Test Suite
+# ================================================================
+#
+# 전체 언어 기능 검증 (Phase B Week 4)
+# 목표: 300줄
+#
+# ================================================================
+
+# 섹션 1: 기본 타입 & 리터럴
+# ================================================================
+
+fn testLiterals(): null {
+  print("=== Test 1: Literals ===")
+
+  # 숫자
+  let num = 42
+  assert(num == 42, "Number literal failed")
+
+  # 문자열
+  let str = "Hello, World!"
+  assert(str == "Hello, World!", "String literal failed")
+
+  # 불린
+  let t = true
+  let f = false
+  assert(t == true, "Boolean true failed")
+  assert(f == false, "Boolean false failed")
+
+  # null
+  let n = null
+  assert(n == null, "Null literal failed")
+
+  print("✓ All literal tests passed")
+  return null
+}
+
+# 섹션 2: 산술 연산
+# ================================================================
+
+fn testArithmetic(): null {
+  print("=== Test 2: Arithmetic ===")
+
+  # 덧셈
+  assert(5 + 3 == 8, "Addition failed")
+
+  # 뺄셈
+  assert(10 - 4 == 6, "Subtraction failed")
+
+  # 곱셈
+  assert(6 * 7 == 42, "Multiplication failed")
+
+  # 나눗셈
+  assert(20 / 4 == 5, "Division failed")
+
+  # 모듈로
+  assert(17 % 5 == 2, "Modulo failed")
+
+  # 복합 표현식
+  assert(2 + 3 * 4 == 14, "Operator precedence failed")
+  assert((2 + 3) * 4 == 20, "Parentheses failed")
+
+  print("✓ All arithmetic tests passed")
+  return null
+}
+
+# 섹션 3: 비교 연산
+# ================================================================
+
+fn testComparison(): null {
+  print("=== Test 3: Comparison ===")
+
+  assert(5 == 5, "Equality failed")
+  assert(5 != 3, "Inequality failed")
+  assert(3 < 5, "Less than failed")
+  assert(5 > 3, "Greater than failed")
+  assert(5 <= 5, "Less equal failed")
+  assert(5 >= 5, "Greater equal failed")
+
+  print("✓ All comparison tests passed")
+  return null
+}
+
+# 섹션 4: 논리 연산
+# ================================================================
+
+fn testLogical(): null {
+  print("=== Test 4: Logical Operations ===")
+
+  assert(true and true == true, "AND true-true failed")
+  assert(true and false == false, "AND true-false failed")
+  assert(false and false == false, "AND false-false failed")
+
+  assert(true or false == true, "OR true-false failed")
+  assert(false or false == false, "OR false-false failed")
+
+  assert(not(true) == false, "NOT true failed")
+  assert(not(false) == true, "NOT false failed")
+
+  print("✓ All logical tests passed")
+  return null
+}
+
+# 섹션 5: 변수 & 할당
+# ================================================================
+
+fn testVariables(): null {
+  print("=== Test 5: Variables ===")
+
+  let x = 10
+  assert(x == 10, "Variable assignment failed")
+
+  let y = x + 5
+  assert(y == 15, "Variable in expression failed")
+
+  let name = "Alice"
+  assert(name == "Alice", "String variable failed")
+
+  print("✓ All variable tests passed")
+  return null
+}
+
+# 섹션 6: 문자열 연산
+# ================================================================
+
+fn testStrings(): null {
+  print("=== Test 6: String Operations ===")
+
+  let hello = "Hello"
+  let world = "World"
+  let result = hello + " " + world
+  assert(result == "Hello World", "String concatenation failed")
+
+  let upper = "UPPERCASE"
+  assert(len(upper) == 9, "String length failed")
+
+  print("✓ All string tests passed")
+  return null
+}
+
+# 섹션 7: 배열 기본
+# ================================================================
+
+fn testArrays(): null {
+  print("=== Test 7: Arrays ===")
+
+  # 배열 생성
+  let arr = [1, 2, 3, 4, 5]
+  assert(len(arr) == 5, "Array length failed")
+
+  # 배열 인덱싱
+  assert(arr[0] == 1, "Array indexing [0] failed")
+  assert(arr[4] == 5, "Array indexing [4] failed")
+
+  # 배열 슬라이싱
+  let slice = slice(arr, 1, 3)
+  assert(len(slice) == 2, "Array slicing failed")
+
+  print("✓ All array tests passed")
+  return null
+}
+
+# 섹션 8: 제어 흐름 - If/Else
+# ================================================================
+
+fn testIfElse(): null {
+  print("=== Test 8: If/Else ===")
+
+  let x = 10
+  let result = 0
+
+  if x > 5 {
+    result = 1
+  } else {
+    result = 0
+  }
+  assert(result == 1, "If branch failed")
+
+  if x < 5 {
+    result = 0
+  } else {
+    result = 1
+  }
+  assert(result == 1, "Else branch failed")
+
+  # 중첩 if
+  if x > 5 {
+    if x < 15 {
+      result = 2
+    }
+  }
+  assert(result == 2, "Nested if failed")
+
+  print("✓ All if/else tests passed")
+  return null
+}
+
+# 섹션 9: 제어 흐름 - While
+# ================================================================
+
+fn testWhile(): null {
+  print("=== Test 9: While Loops ===")
+
+  let sum = 0
+  let i = 0
+
+  while i < 5 {
+    sum = sum + i
+    i = i + 1
+  }
+  assert(sum == 10, "While loop failed")  # 0+1+2+3+4 = 10
+
+  # While with break condition
+  let j = 0
+  let count = 0
+  while j < 100 {
+    count = count + 1
+    j = j + 1
+    if j >= 5 {
+      j = 100  # Break condition
+    }
+  }
+  assert(count == 5, "While with condition failed")
+
+  print("✓ All while tests passed")
+  return null
+}
+
+# 섹션 10: 제어 흐름 - For
+# ================================================================
+
+fn testFor(): null {
+  print("=== Test 10: For Loops ===")
+
+  let sum = 0
+  for i, 0, 5 {
+    sum = sum + i
+  }
+  assert(sum == 10, "For loop failed")  # 0+1+2+3+4 = 10
+
+  let count = 0
+  for i, 1, 4 {
+    count = count + 1
+  }
+  assert(count == 3, "For loop count failed")
+
+  print("✓ All for loop tests passed")
+  return null
+}
+
+# 섹션 11: 함수 정의
+# ================================================================
+
+fn add(a: i32, b: i32): i32 {
+  return a + b
+}
+
+fn testFunctions(): null {
+  print("=== Test 11: Functions ===")
+
+  let result = add(5, 3)
+  assert(result == 8, "Function call failed")
+
+  let x = add(10, 20)
+  assert(x == 30, "Function with larger numbers failed")
+
+  print("✓ All function tests passed")
+  return null
+}
+
+# 섹션 12: 고차 함수 (맵, 필터)
+# ================================================================
+
+fn testHigherOrder(): null {
+  print("=== Test 12: Higher-Order Functions ===")
+
+  let arr = [1, 2, 3, 4, 5]
+
+  # 맵 테스트
+  let doubled = map(arr, fn(x) { x * 2 })
+  assert(len(doubled) == 5, "Map length failed")
+  assert(doubled[0] == 2, "Map transformation failed")
+
+  # 필터 테스트
+  let evens = filter(arr, fn(x) { x % 2 == 0 })
+  assert(len(evens) == 2, "Filter count failed")
+
+  # 리듀스 테스트
+  let sum = reduce(arr, fn(acc, x) { acc + x }, 0)
+  assert(sum == 15, "Reduce failed")  # 1+2+3+4+5 = 15
+
+  print("✓ All higher-order tests passed")
+  return null
+}
+
+# 섹션 13: 재귀
+# ================================================================
+
+fn factorial(n: i32): i32 {
+  if n <= 1 {
+    return 1
+  }
+  return n * factorial(n - 1)
+}
+
+fn testRecursion(): null {
+  print("=== Test 13: Recursion ===")
+
+  assert(factorial(0) == 1, "Factorial(0) failed")
+  assert(factorial(1) == 1, "Factorial(1) failed")
+  assert(factorial(5) == 120, "Factorial(5) failed")
+
+  print("✓ All recursion tests passed")
+  return null
+}
+
+# 섹션 14: 타입 검사
+# ================================================================
+
+fn testTypeChecking(): null {
+  print("=== Test 14: Type Checking ===")
+
+  let num = 42
+  assert(type(num) == "number", "Number type check failed")
+
+  let str = "hello"
+  assert(type(str) == "string", "String type check failed")
+
+  let arr = [1, 2, 3]
+  assert(type(arr) == "array", "Array type check failed")
+
+  print("✓ All type checking tests passed")
+  return null
+}
+
+# 섹션 15: 내장 함수
+# ================================================================
+
+fn testBuiltins(): null {
+  print("=== Test 15: Built-in Functions ===")
+
+  # 문자열 함수
+  assert(len("hello") == 5, "len() failed")
+  assert(upper("hello") == "HELLO", "upper() failed")
+  assert(lower("HELLO") == "hello", "lower() failed")
+
+  # 수학 함수
+  assert(abs(-5) == 5, "abs() failed")
+  assert(max(3, 7) == 7, "max() failed")
+  assert(min(3, 7) == 3, "min() failed")
+
+  # 배열 함수
+  let arr = [3, 1, 4, 1, 5]
+  assert(sum(arr) == 14, "sum() failed")
+  assert(count(arr) == 5, "count() failed")
+
+  print("✓ All built-in tests passed")
+  return null
+}
+
+# ================================================================
+# 종합 테스트 실행
+# ================================================================
+
+fn runAllTests(): null {
+  print("\n========================================")
+  print("FreeLang Comprehensive Test Suite")
+  print("========================================\n")
+
+  testLiterals()
+  testArithmetic()
+  testComparison()
+  testLogical()
+  testVariables()
+  testStrings()
+  testArrays()
+  testIfElse()
+  testWhile()
+  testFor()
+  testFunctions()
+  testHigherOrder()
+  testRecursion()
+  testTypeChecking()
+  testBuiltins()
+
+  print("\n========================================")
+  print("✓ ALL TESTS PASSED!")
+  print("========================================\n")
+
+  return null
+}
+
+# ================================================================
+# 메인 진입점
+# ================================================================
+
+fn main(): null {
+  runAllTests()
+  return null
+}
+
+main()
