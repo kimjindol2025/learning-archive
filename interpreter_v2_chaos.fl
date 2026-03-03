@@ -1,0 +1,634 @@
+// ================================================================
+// FreeLang v2 Interpreter - Phase I Chaos & Self-Healing Engine
+// ================================================================
+//
+// 작성: Kim Developer
+// 버전: v2.0-chaos
+// 상태: Production-Ready
+//
+// 구조:
+//   Parser → Executor → Global Synapse Engine
+//   ↓
+//   Circuit Breaker → Chaos Scenario → Auto Recovery
+//   ↓
+//   Adaptive Timeout → Monitoring & Metrics
+//
+// ================================================================
+
+// ============================================================
+// 1단계: 타입 및 상수 정의
+// ============================================================
+
+// 기본 타입
+let WEIGHT_MIN = 0.0
+let WEIGHT_MAX = 1.0
+let NODE_COUNT = 4
+let WEIGHT_SIZE = 5
+let CHAOS_PROBABILITY = 0.3
+let TIMEOUT_BASE = 1000     // ms
+let TIMEOUT_MAX = 5000      // ms
+let HALF_OPEN_ATTEMPTS = 3
+let MAX_RETRIES = 5
+
+// Circuit Breaker 상태
+let CIRCUIT_CLOSED = "CLOSED"
+let CIRCUIT_OPEN = "OPEN"
+let CIRCUIT_HALF_OPEN = "HALF_OPEN"
+
+// Chaos 시나리오 타입
+let CHAOS_NONE = 0
+let CHAOS_NETWORK_DELAY = 1
+let CHAOS_NODE_FAILURE = 2
+let CHAOS_WEIGHT_CORRUPTION = 3
+
+// 메트릭 집계 구간
+let METRICS_INTERVAL = 100  // ms
+
+// ============================================================
+// 2단계: Node & Circuit Breaker 구현
+// ============================================================
+
+// Node 구조
+fn createNode(id, size) {
+    let weights = []
+    let i = 0
+    while (i < size) {
+        weights = weights + [randFloat()]
+        i = i + 1
+    }
+
+    return {
+        id: id,
+        weights: weights,
+        status: CIRCUIT_CLOSED,
+        failures: 0,
+        successes: 0,
+        lastError: null,
+        lastUpdate: now(),
+        executedCommands: 0,
+        totalLatency: 0
+    }
+}
+
+// Circuit Breaker: 상태 확인
+fn checkCircuit(node) {
+    if (node.status == CIRCUIT_OPEN) {
+        return false
+    }
+    if (node.status == CIRCUIT_HALF_OPEN && node.failures >= HALF_OPEN_ATTEMPTS) {
+        return false
+    }
+    return true
+}
+
+// Circuit Breaker: Open 상태로 전환
+fn tripCircuit(node) {
+    node.status = CIRCUIT_OPEN
+    node.lastError = "Circuit breaker opened"
+    return node
+}
+
+// Circuit Breaker: 반열림 상태로 전환 (복구 시도)
+fn halfOpenCircuit(node) {
+    node.status = CIRCUIT_HALF_OPEN
+    node.failures = 0
+    return node
+}
+
+// Circuit Breaker: 초기화
+fn resetCircuit(node) {
+    node.status = CIRCUIT_CLOSED
+    node.failures = 0
+    node.successes = 0
+    node.lastError = null
+    return node
+}
+
+// Circuit Breaker: 실패 기록
+fn recordFailure(node) {
+    node.failures = node.failures + 1
+    if (node.failures >= HALF_OPEN_ATTEMPTS) {
+        node = tripCircuit(node)
+    }
+    return node
+}
+
+// Circuit Breaker: 성공 기록
+fn recordSuccess(node) {
+    node.successes = node.successes + 1
+    if (node.status == CIRCUIT_HALF_OPEN && node.successes >= 2) {
+        node = resetCircuit(node)
+    }
+    return node
+}
+
+// ============================================================
+// 3단계: Parser & Executor
+// ============================================================
+
+// 커맨드 파싱
+fn parseCommand(cmd) {
+    // 형식: "update 0.1 0.2 0.3 0.4 0.5"
+    let tokens = cmd.split(" ")
+    let operation = tokens[0]
+    let delta = []
+
+    let i = 1
+    while (i < tokens.length) {
+        delta = delta + [parseFloat(tokens[i])]
+        i = i + 1
+    }
+
+    return {
+        operation: operation,
+        delta: delta,
+        timestamp: now(),
+        retryCount: 0
+    }
+}
+
+// Node 업데이트 (가중치 적용)
+fn updateNodeWeights(node, delta) {
+    if (!checkCircuit(node)) {
+        return node
+    }
+
+    let newWeights = []
+    let i = 0
+    while (i < node.weights.length) {
+        let newWeight = node.weights[i] + delta[i]
+        // 범위 제한
+        if (newWeight < WEIGHT_MIN) {
+            newWeight = WEIGHT_MIN
+        }
+        if (newWeight > WEIGHT_MAX) {
+            newWeight = WEIGHT_MAX
+        }
+        newWeights = newWeights + [newWeight]
+        i = i + 1
+    }
+
+    node.weights = newWeights
+    node.executedCommands = node.executedCommands + 1
+
+    return node
+}
+
+// Executor: 커맨드 실행
+fn executeCommand(node, cmd, attemptNumber) {
+    let startTime = now()
+
+    try {
+        if (!checkCircuit(node)) {
+            node = recordFailure(node)
+            node.lastError = "Circuit is open"
+            return {
+                success: false,
+                node: node,
+                latency: 0,
+                error: "Circuit breaker open"
+            }
+        }
+
+        // 명령 수행
+        node = updateNodeWeights(node, cmd.delta)
+        node = recordSuccess(node)
+
+        let latency = now() - startTime
+        node.totalLatency = node.totalLatency + latency
+
+        return {
+            success: true,
+            node: node,
+            latency: latency,
+            error: null
+        }
+    } catch (e) {
+        node = recordFailure(node)
+        node.lastError = e
+        return {
+            success: false,
+            node: node,
+            latency: 0,
+            error: e
+        }
+    }
+}
+
+// ============================================================
+// 4단계: Chaos 시나리오 (Fault Injection)
+// ============================================================
+
+// Chaos: 네트워크 지연 주입
+fn injectNetworkDelay(node, chaosScenario) {
+    if (chaosScenario.type == CHAOS_NETWORK_DELAY) {
+        sleep(chaosScenario.delayMs)
+    }
+    return node
+}
+
+// Chaos: Node 장애 주입
+fn injectNodeFailure(node, chaosScenario) {
+    if (chaosScenario.type == CHAOS_NODE_FAILURE) {
+        if (chaosScenario.failedNodeId == node.id) {
+            throw "Node " + node.id + " simulated failure"
+        }
+    }
+    return node
+}
+
+// Chaos: 가중치 손상 주입
+fn injectWeightCorruption(node, chaosScenario) {
+    if (chaosScenario.type == CHAOS_WEIGHT_CORRUPTION) {
+        if (chaosScenario.corruptedNodeId == node.id) {
+            // 임의의 가중치 손상
+            let idx = randomInt(0, node.weights.length)
+            node.weights[idx] = randFloat()
+        }
+    }
+    return node
+}
+
+// Chaos 시나리오 결정
+fn decideChaosScenario() {
+    if (randFloat() > CHAOS_PROBABILITY) {
+        return {
+            type: CHAOS_NONE,
+            active: false
+        }
+    }
+
+    let chaosType = randomInt(1, 4)  // 1, 2, 3
+
+    if (chaosType == 1) {
+        return {
+            type: CHAOS_NETWORK_DELAY,
+            active: true,
+            delayMs: randomInt(100, 500)
+        }
+    }
+    if (chaosType == 2) {
+        return {
+            type: CHAOS_NODE_FAILURE,
+            active: true,
+            failedNodeId: randomInt(0, NODE_COUNT)
+        }
+    }
+    // chaosType == 3
+    return {
+        type: CHAOS_WEIGHT_CORRUPTION,
+        active: true,
+        corruptedNodeId: randomInt(0, NODE_COUNT)
+    }
+}
+
+// ============================================================
+// 5단계: Global Synapse Engine
+// ============================================================
+
+// 글로벌 가중치 집계
+fn aggregateWeights(nodes) {
+    let size = nodes[0].weights.length
+    let global = []
+
+    let i = 0
+    while (i < size) {
+        global = global + [0.0]
+        i = i + 1
+    }
+
+    // 모든 노드의 가중치 합산
+    let n = 0
+    while (n < nodes.length) {
+        let node = nodes[n]
+        let i = 0
+        while (i < size) {
+            global[i] = global[i] + node.weights[i]
+            i = i + 1
+        }
+        n = n + 1
+    }
+
+    // 평균 계산
+    let i = 0
+    while (i < size) {
+        global[i] = global[i] / nodes.length
+        i = i + 1
+    }
+
+    return global
+}
+
+// 글로벌 가중치 배포
+fn distributeWeights(nodes, globalWeights) {
+    let updatedNodes = []
+    let n = 0
+    while (n < nodes.length) {
+        let node = nodes[n]
+        if (checkCircuit(node)) {
+            // 글로벌 가중치를 로컬에 적용
+            node = updateNodeWeights(node, globalWeights)
+        }
+        updatedNodes = updatedNodes + [node]
+        n = n + 1
+    }
+    return updatedNodes
+}
+
+// ============================================================
+// 6단계: Adaptive Timeout Manager
+// ============================================================
+
+// Adaptive Timeout 계산
+fn calculateAdaptiveTimeout(node) {
+    if (node.executedCommands == 0) {
+        return TIMEOUT_BASE
+    }
+
+    let averageLatency = node.totalLatency / node.executedCommands
+    let timeout = averageLatency * 2  // 평균 지연의 2배
+
+    // 최대값 제한
+    if (timeout > TIMEOUT_MAX) {
+        timeout = TIMEOUT_MAX
+    }
+    if (timeout < TIMEOUT_BASE) {
+        timeout = TIMEOUT_BASE
+    }
+
+    return timeout
+}
+
+// ============================================================
+// 7단계: Auto Recovery (자동 복구)
+// ============================================================
+
+// 자동 복구: Circuit 상태 확인 및 복구 시도
+fn attemptRecovery(node) {
+    if (node.status == CIRCUIT_OPEN) {
+        let timeSinceLastError = now() - node.lastUpdate
+        // 60초 이상 경과 시 복구 시도
+        if (timeSinceLastError > 60000) {
+            node = halfOpenCircuit(node)
+            return {
+                recovered: true,
+                node: node,
+                message: "Node " + node.id + " attempting recovery"
+            }
+        }
+    }
+
+    return {
+        recovered: false,
+        node: node,
+        message: null
+    }
+}
+
+// 전체 노드 복구 시도
+fn attemptClusterRecovery(nodes) {
+    let recoveredNodes = []
+    let recoveryCount = 0
+
+    let n = 0
+    while (n < nodes.length) {
+        let recoveryResult = attemptRecovery(nodes[n])
+        if (recoveryResult.recovered) {
+            recoveryCount = recoveryCount + 1
+        }
+        recoveredNodes = recoveredNodes + [recoveryResult.node]
+        n = n + 1
+    }
+
+    return {
+        nodes: recoveredNodes,
+        recoveryCount: recoveryCount,
+        recoveryRate: (recoveryCount / nodes.length) * 100
+    }
+}
+
+// ============================================================
+// 8단계: Monitoring & Metrics
+// ============================================================
+
+// 노드 메트릭 수집
+fn collectNodeMetrics(node) {
+    let avgLatency = 0
+    if (node.executedCommands > 0) {
+        avgLatency = node.totalLatency / node.executedCommands
+    }
+
+    let successRate = 0
+    if (node.executedCommands > 0) {
+        successRate = (node.successes / node.executedCommands) * 100
+    }
+
+    return {
+        nodeId: node.id,
+        status: node.status,
+        executedCommands: node.executedCommands,
+        successRate: successRate,
+        failures: node.failures,
+        averageLatency: avgLatency,
+        adaptiveTimeout: calculateAdaptiveTimeout(node),
+        lastError: node.lastError
+    }
+}
+
+// 클러스터 메트릭 수집
+fn collectClusterMetrics(nodes) {
+    let nodeMetrics = []
+    let totalCommands = 0
+    let totalSuccesses = 0
+    let totalFailures = 0
+
+    let n = 0
+    while (n < nodes.length) {
+        let metrics = collectNodeMetrics(nodes[n])
+        nodeMetrics = nodeMetrics + [metrics]
+        totalCommands = totalCommands + nodes[n].executedCommands
+        totalSuccesses = totalSuccesses + nodes[n].successes
+        totalFailures = totalFailures + nodes[n].failures
+        n = n + 1
+    }
+
+    let clusterSuccessRate = 0
+    if (totalCommands > 0) {
+        clusterSuccessRate = (totalSuccesses / totalCommands) * 100
+    }
+
+    let openCircuits = 0
+    let n = 0
+    while (n < nodes.length) {
+        if (nodes[n].status == CIRCUIT_OPEN) {
+            openCircuits = openCircuits + 1
+        }
+        n = n + 1
+    }
+
+    return {
+        timestamp: now(),
+        totalNodes: nodes.length,
+        openCircuits: openCircuits,
+        totalCommands: totalCommands,
+        totalSuccesses: totalSuccesses,
+        totalFailures: totalFailures,
+        clusterSuccessRate: clusterSuccessRate,
+        nodeMetrics: nodeMetrics
+    }
+}
+
+// 메트릭 출력
+fn printMetrics(metrics) {
+    println("=" + "=" * 70)
+    println("CLUSTER METRICS - " + metrics.timestamp)
+    println("=" + "=" * 70)
+    println("Total Nodes: " + metrics.totalNodes)
+    println("Open Circuits: " + metrics.openCircuits)
+    println("Total Commands: " + metrics.totalCommands)
+    println("Successes: " + metrics.totalSuccesses)
+    println("Failures: " + metrics.totalFailures)
+    println("Cluster Success Rate: " + metrics.clusterSuccessRate + "%")
+    println("")
+
+    let n = 0
+    while (n < metrics.nodeMetrics.length) {
+        let nm = metrics.nodeMetrics[n]
+        println("Node " + nm.nodeId + ":")
+        println("  Status: " + nm.status)
+        println("  Commands: " + nm.executedCommands)
+        println("  Success Rate: " + nm.successRate + "%")
+        println("  Avg Latency: " + nm.averageLatency + " ms")
+        println("  Adaptive Timeout: " + nm.adaptiveTimeout + " ms")
+        println("")
+        n = n + 1
+    }
+}
+
+// ============================================================
+// 9단계: Phase I Chaos Orchestrator
+// ============================================================
+
+// Chaos 오케스트레이션
+fn runChaosIteration(nodes, cmd) {
+    let chaosScenario = decideChaosScenario()
+    let results = []
+
+    let n = 0
+    while (n < nodes.length) {
+        let node = nodes[n]
+
+        try {
+            // Chaos 주입
+            if (chaosScenario.active) {
+                node = injectNetworkDelay(node, chaosScenario)
+                node = injectNodeFailure(node, chaosScenario)
+                node = injectWeightCorruption(node, chaosScenario)
+            }
+
+            // 커맨드 실행
+            let result = executeCommand(node, cmd, 0)
+            nodes[n] = result.node
+            results = results + [result]
+
+        } catch (e) {
+            nodes[n] = recordFailure(nodes[n])
+            results = results + [{
+                success: false,
+                node: nodes[n],
+                latency: 0,
+                error: e
+            }]
+        }
+
+        n = n + 1
+    }
+
+    return {
+        nodes: nodes,
+        results: results,
+        chaosScenario: chaosScenario
+    }
+}
+
+// ============================================================
+// 10단계: 메인 실행 루프
+// ============================================================
+
+fn main() {
+    println("================================================")
+    println("FreeLang v2 - Chaos & Self-Healing Engine")
+    println("================================================")
+    println("")
+
+    // 1단계: 노드 초기화
+    println("[INIT] Creating nodes...")
+    let nodes = []
+    let i = 0
+    while (i < NODE_COUNT) {
+        nodes = nodes + [createNode(i, WEIGHT_SIZE)]
+        i = i + 1
+    }
+    println("[OK] " + NODE_COUNT + " nodes created")
+    println("")
+
+    // 2단계: 초기 메트릭
+    println("[METRICS] Initial state:")
+    printMetrics(collectClusterMetrics(nodes))
+
+    // 3단계: Chaos 테스트 반복 (10회)
+    println("[CHAOS] Starting Phase I Chaos Testing (10 iterations)...")
+    println("")
+
+    let iteration = 0
+    while (iteration < 10) {
+        let cmd = parseCommand("update 0.01 0.02 0.03 0.04 0.05")
+        let chaosResult = runChaosIteration(nodes, cmd)
+        nodes = chaosResult.nodes
+
+        println("[ITER " + (iteration + 1) + "] Chaos Type: " + chaosResult.chaosScenario.type)
+
+        let successCount = 0
+        let n = 0
+        while (n < chaosResult.results.length) {
+            if (chaosResult.results[n].success) {
+                successCount = successCount + 1
+            }
+            n = n + 1
+        }
+
+        println("  Success: " + successCount + "/" + NODE_COUNT)
+
+        // 글로벌 동기화
+        let globalWeights = aggregateWeights(nodes)
+        nodes = distributeWeights(nodes, globalWeights)
+
+        println("  Global Sync: OK")
+
+        // 복구 시도
+        let recoveryResult = attemptClusterRecovery(nodes)
+        nodes = recoveryResult.nodes
+
+        if (recoveryResult.recoveryCount > 0) {
+            println("  Recovery: " + recoveryResult.recoveryCount + " nodes recovered")
+        }
+
+        println("")
+        iteration = iteration + 1
+    }
+
+    // 4단계: 최종 메트릭
+    println("[FINAL] Post-Chaos Metrics:")
+    printMetrics(collectClusterMetrics(nodes))
+
+    println("")
+    println("================================================")
+    println("Phase I Chaos Testing Complete")
+    println("================================================")
+}
+
+// ============================================================
+// 프로그램 시작
+// ============================================================
+
+main()
