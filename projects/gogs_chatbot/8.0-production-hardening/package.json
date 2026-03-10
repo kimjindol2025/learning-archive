@@ -1,0 +1,25 @@
+{
+  "name": "gogs-knowledge-engine-8.0-hardening",
+  "version": "8.0.0",
+  "description": "운영 안정화 시스템 - 기능 동결, 로깅, 재현성, 버전관리, 복구",
+  "type": "module",
+  "main": "feature-manager.js",
+  "scripts": {
+    "test": "node tests/test-hardening.js",
+    "start": "node tests/test-hardening.js"
+  },
+  "keywords": [
+    "production-hardening",
+    "feature-management",
+    "logging-system",
+    "reproducibility",
+    "version-management",
+    "recovery-playbook",
+    "operational-stability",
+    "deployment-validation"
+  ],
+  "author": "kim",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,25 @@
+{
+  "name": "gogs-knowledge-engine-7.0-active",
+  "version": "7.0.0",
+  "description": "능동적 설계 보조 시스템 - 구조 경고와 설계 제안을 통한 설계 진화 동반 지능",
+  "type": "module",
+  "main": "design-advisor.js",
+  "scripts": {
+    "test": "node tests/test-active-engine.js",
+    "start": "node tests/test-active-engine.js"
+  },
+  "keywords": [
+    "active-design-engine",
+    "design-advisor",
+    "structure-warning",
+    "evolution-prediction",
+    "pattern-recommendation",
+    "design-companion",
+    "architectural-analysis",
+    "design-intelligence"
+  ],
+  "author": "kim",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

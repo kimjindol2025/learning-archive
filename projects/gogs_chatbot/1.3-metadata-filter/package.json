@@ -1,0 +1,20 @@
+{
+  "name": "gogs-chatbot-metadata-filter",
+  "version": "1.3.0",
+  "type": "module",
+  "description": "Version and phase aware RAG with metadata filtering",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/test-filter.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "anthropic": "^0.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

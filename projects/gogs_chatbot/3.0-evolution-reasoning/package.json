@@ -1,0 +1,25 @@
+{
+  "name": "gogs-knowledge-engine-3.0-evolution",
+  "version": "3.0.0",
+  "description": "시간축 진화 추론 엔진 - Git DAG 기반 버전/기능 생애 주기 분석",
+  "type": "module",
+  "main": "git-dag.js",
+  "scripts": {
+    "test": "node tests/test-evolution.js",
+    "start": "node tests/test-evolution.js"
+  },
+  "keywords": [
+    "git",
+    "dag",
+    "evolution",
+    "temporal-reasoning",
+    "version-tracking",
+    "feature-lifecycle",
+    "commit-analysis",
+    "gogs"
+  ],
+  "author": "kim",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

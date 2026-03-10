@@ -1,0 +1,25 @@
+{
+  "name": "gogs-knowledge-engine-5.0-cognition",
+  "version": "5.0.0",
+  "description": "설계 사고 지도 자동 생성 - 프로젝트 전체의 개념 네트워크 구조화",
+  "type": "module",
+  "main": "concept-extractor.js",
+  "scripts": {
+    "test": "node tests/test-cognition.js",
+    "start": "node tests/test-cognition.js"
+  },
+  "keywords": [
+    "design-cognition",
+    "concept-mapping",
+    "knowledge-graph",
+    "architecture-analysis",
+    "design-thinking",
+    "cognitive-science",
+    "graph-analysis",
+    "temporal-reasoning"
+  ],
+  "author": "kim",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

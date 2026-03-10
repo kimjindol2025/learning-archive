@@ -1,0 +1,25 @@
+{
+  "name": "gogs-knowledge-engine-4.0-design-intent",
+  "version": "4.0.0",
+  "description": "설계 의도 추출 & 아키텍처 변화 지도 - 왜 바뀌었는가를 분석하는 엔진",
+  "type": "module",
+  "main": "design-intent-analyzer.js",
+  "scripts": {
+    "test": "node tests/test-design-intent.js",
+    "start": "node tests/test-design-intent.js"
+  },
+  "keywords": [
+    "design-intent",
+    "architecture-evolution",
+    "temporal-reasoning",
+    "git-analysis",
+    "software-intelligence",
+    "design-maturity",
+    "innovation-index",
+    "gogs"
+  ],
+  "author": "kim",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

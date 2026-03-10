@@ -1,0 +1,25 @@
+{
+  "name": "gogs-knowledge-engine-6.0-ecosystem",
+  "version": "6.0.0",
+  "description": "다중 Repo 통합 & 지식 생태계 모델 - 여러 저장소의 개념 생태계 분석",
+  "type": "module",
+  "main": "multi-repo-collector.js",
+  "scripts": {
+    "test": "node tests/test-ecosystem.js",
+    "start": "node tests/test-ecosystem.js"
+  },
+  "keywords": [
+    "multi-repository",
+    "knowledge-ecosystem",
+    "concept-transfer",
+    "ecosystem-analysis",
+    "cross-repo-intelligence",
+    "pattern-transfer",
+    "influence-analysis",
+    "distributed-cognition"
+  ],
+  "author": "kim",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}
