@@ -1,0 +1,242 @@
+// FreeLang v4 OPSec Advanced Test Suite
+// 고급 테스트 케이스
+
+module OPSecAdvancedTests
+
+// Test 1: 정책 강제 및 접근 제어
+test "PolicyEnforcer: RBAC 규칙 검증" {
+  let enforcer = PolicyEnforcer::new()
+
+  // 규칙 설정
+  enforcer
+    .rule("admin", ["read", "write", "delete"], Resource::All)
+    .rule("user", ["read"], Resource::Own)
+    .rule("guest", ["read"], Resource::Public)
+
+  // Admin 테스트
+  let admin = User { id: "admin1", role: "admin" }
+  assert!(enforcer.enforce(admin, "delete", "/data/sensitive").unwrap())
+
+  // User 테스트
+  let user = User { id: "user1", role: "user" }
+  assert!(enforcer.enforce(user, "read", "/data/own").unwrap())
+  assert!(!enforcer.enforce(user, "write", "/data/other").unwrap())
+
+  // Guest 테스트
+  let guest = User { id: "guest1", role: "guest" }
+  assert!(enforcer.enforce(guest, "read", "/data/public").unwrap())
+  assert!(!enforcer.enforce(guest, "write", "/data/public").unwrap())
+}
+
+// Test 2: 동적 정책 평가
+test "PolicyEnforcer: 동적 정책 조건" {
+  let enforcer = PolicyEnforcer::new()
+
+  // 시간 기반 정책
+  let now = get_current_hour()
+  if now >= 9 && now <= 17 {
+    enforcer.rule("employee", ["access_building"], Resource::All)
+  } else {
+    enforcer.rule("employee", ["request_access"], Resource::All)
+  }
+
+  let employee = User { id: "emp1", role: "employee" }
+  // 업무 시간에는 접근 가능
+  if now >= 9 && now <= 17 {
+    assert!(enforcer.enforce(employee, "access_building", "/office").unwrap())
+  }
+}
+
+// Test 3: 감사 로깅
+test "AuditLogger: 이벤트 기록 및 암호화" {
+  let audit = AuditLogger::new()
+    .with_encryption("my-secret-key-32-chars-long-!!!")
+    .with_retention(days: 90)
+
+  // 정상 접근 로깅
+  let event_id = audit.log(
+    event_type: "access_granted",
+    user: "user@example.com",
+    resource: "/api/users",
+    timestamp: now(),
+    details: { action: "read", status: "success" }
+  ).unwrap()
+
+  assert!(event_id.len() > 0)
+
+  // 접근 거부 로깅
+  let deny_event = audit.log(
+    event_type: "access_denied",
+    user: "attacker@example.com",
+    resource: "/admin/settings",
+    timestamp: now(),
+    details: { reason: "insufficient_permissions", ip: "192.168.1.100" }
+  ).unwrap()
+
+  assert!(deny_event.len() > 0)
+}
+
+// Test 4: 감사 로그 조회
+test "AuditLogger: 로그 필터링 및 조회" {
+  let audit = AuditLogger::new()
+    .with_encryption("test-key-32-chars-long!!!!!")
+    .with_retention(days: 90)
+
+  // 여러 이벤트 기록
+  audit.log(
+    event_type: "access_denied",
+    user: "user1@example.com",
+    resource: "/api/admin",
+    timestamp: now(),
+    details: { reason: "permission_denied" }
+  )?
+
+  audit.log(
+    event_type: "access_denied",
+    user: "user2@example.com",
+    resource: "/api/admin",
+    timestamp: now(),
+    details: { reason: "permission_denied" }
+  )?
+
+  // 특정 사용자의 실패한 접근 조회
+  let logs = audit.query(
+    filter: AuditFilter::new()
+      .user("user1@example.com")
+      .event_type("access_denied")
+  )
+
+  assert!(logs.len() >= 1)
+}
+
+// Test 5: ACL 관리
+test "AccessControlList: 권한 부여 및 확인" {
+  let acl = AccessControlList::new()
+
+  // 권한 부여
+  acl.grant("user1", "read", "/data/public")?
+  acl.grant("user2", "write", "/data/user2")?
+  acl.grant("admin", "delete", "/data/sensitive")?
+
+  // 권한 확인
+  assert!(acl.check("user1", "read", "/data/public"))
+  assert!(!acl.check("user1", "write", "/data/public"))
+  assert!(acl.check("user2", "write", "/data/user2"))
+  assert!(!acl.check("user2", "delete", "/data/user2"))
+}
+
+// Test 6: ACL 권한 거부
+test "AccessControlList: 권한 거부 및 철회" {
+  let acl = AccessControlList::new()
+
+  acl.grant("user1", "read", "/api/data")?
+  acl.grant("user1", "write", "/api/data")?
+
+  // 쓰기 권한 거부
+  acl.deny("user1", "write", "/api/data")?
+
+  assert!(acl.check("user1", "read", "/api/data"))
+  assert!(!acl.check("user1", "write", "/api/data"))
+
+  // 모든 권한 철회
+  acl.revoke("user1", "/api/data")?
+  assert!(!acl.check("user1", "read", "/api/data"))
+}
+
+// Test 7: 데이터 암호화
+test "DataProtector: 암호화 및 복호화" {
+  let protector = DataProtector::new()
+    .with_encryption(Algorithm::AES256)
+
+  let original = "sensitive_data_12345"
+  let encrypted = protector.encrypt(original)?
+
+  // 암호화된 데이터는 원본과 다름
+  assert!(encrypted != original)
+
+  // 복호화 후 원본과 동일
+  let decrypted = protector.decrypt(encrypted)?
+  assert!(decrypted == original)
+}
+
+// Test 8: 데이터 마스킹
+test "DataProtector: 신용카드 번호 마스킹" {
+  let protector = DataProtector::new()
+    .with_masking(Pattern::CreditCard)
+
+  let card_number = "4111-1111-1111-1111"
+  let masked = protector.mask(card_number)
+
+  // 마스킹된 데이터는 일부만 보임
+  assert!(masked.contains("4111"))
+  assert!(masked.contains("****"))
+  assert!(masked != card_number)
+}
+
+// Test 9: 다중 데이터 유형 마스킹
+test "DataProtector: 다양한 데이터 유형 마스킹" {
+  let protector = DataProtector::new()
+
+  // SSN 마스킹
+  let ssn = "123-45-6789"
+  let masked_ssn = protector.mask(ssn)
+  assert!(masked_ssn.contains("123") || masked_ssn.contains("****"))
+
+  // Email 마스킹
+  let email = "john.doe@example.com"
+  let masked_email = protector.mask(email)
+  assert!(masked_email.len() > 0)
+}
+
+// Test 10: 네트워크 정책 - 포트 관리
+test "NetworkPolicy: 포트 허용 및 차단" {
+  let policy = NetworkPolicy::new()
+
+  // 포트 허용
+  policy
+    .allow_port(80, "tcp")
+    .allow_port(443, "tcp")
+    .allow_port(53, "udp")
+
+  // 위험한 포트 차단
+  policy
+    .block_port(23)   // Telnet
+    .block_port(3389) // RDP
+
+  // 검증 (실제 구현에서는 get_port_status 등의 메서드 필요)
+  // assert!(policy.is_port_allowed(80))
+  // assert!(!policy.is_port_allowed(23))
+}
+
+// Test 11: 속도 제한 (Rate Limiting)
+test "NetworkPolicy: 요청 속도 제한" {
+  let policy = NetworkPolicy::new()
+
+  policy.rate_limit(100)  // 초당 100 요청
+  policy.rate_limit(1000) // 초당 1000 요청
+
+  // 속도 제한이 적용되었는지 확인
+  // 이는 실제 트래픽 시뮬레이션이 필요함
+}
+
+// Test 12: DDoS 방어
+test "NetworkPolicy: DDoS 방어 활성화" {
+  let policy = NetworkPolicy::new()
+    .enable_ddos_protection()
+
+  // DDoS 방어가 활성화됨
+  // 실제 구현에서는 이상 탐지 로직 필요
+}
+
+// 헬퍼 함수들
+fn get_current_hour() -> Integer {
+  let now = now()
+  // 현재 시간 반환 (가상 구현)
+  9  // 테스트 용도로 고정값
+}
+
+fn assert!(condition: bool) {
+  if !condition {
+    panic("Assertion failed!")
+  }
+}

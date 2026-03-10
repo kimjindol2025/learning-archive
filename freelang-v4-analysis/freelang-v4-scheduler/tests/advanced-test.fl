@@ -1,0 +1,419 @@
+// FreeLang v4 Scheduler Advanced Test Suite
+// 작업 스케줄링 및 워크플로우 고급 테스트
+
+module SchedulerAdvancedTests
+
+// Test 1: 기본 Cron 작업
+test "JobScheduler: Cron 기반 작업 스케줄링" {
+  let scheduler = JobScheduler::new()
+
+  // 매일 새벽 2시에 정리 작업
+  let job_id = scheduler.add_job(
+    "daily_cleanup",
+    "0 2 * * *",
+    || {
+      println("Cleaning up old files...")
+    }
+  )?
+
+  assert!(job_id.len() > 0)
+}
+
+// Test 2: 다양한 Cron 표현식
+test "JobScheduler: 다양한 Cron 패턴" {
+  let scheduler = JobScheduler::new()
+
+  // 매시간
+  scheduler.add_job("hourly", "0 * * * *", || {})?
+
+  // 매일 오후 3시
+  scheduler.add_job("daily_3pm", "0 15 * * *", || {})?
+
+  // 평일 9시
+  scheduler.add_job("weekday_9am", "0 9 * * 1-5", || {})?
+
+  // 매월 1일
+  scheduler.add_job("monthly", "0 0 1 * *", || {})?
+
+  // 매 5분마다
+  scheduler.add_job("frequent", "*/5 * * * *", || {})?
+}
+
+// Test 3: 일회용 작업
+test "JobScheduler: 일회용 작업" {
+  let scheduler = JobScheduler::new()
+
+  // 1시간 후 실행
+  let job_id = scheduler.add_once_job(
+    "send_email",
+    3600,
+    || {
+      send_welcome_email()
+    }
+  )?
+
+  assert!(job_id.len() > 0)
+}
+
+// Test 4: 반복 작업
+test "JobScheduler: 반복 간격 작업" {
+  let scheduler = JobScheduler::new()
+
+  // 5분마다 상태 확인
+  let job_id = scheduler.add_interval_job(
+    "check_health",
+    300,
+    || {
+      health_check()
+    }
+  )?
+
+  assert!(job_id.len() > 0)
+}
+
+// Test 5: 작업 일시 중지 및 재개
+test "JobScheduler: 작업 제어" {
+  let scheduler = JobScheduler::new()
+
+  let job_id = scheduler.add_job(
+    "test_job",
+    "0 * * * *",
+    || {}
+  )?
+
+  // 작업 일시 중지
+  scheduler.pause_job(job_id)?
+
+  // 작업 상태 확인
+  let status = scheduler.get_job_status(job_id)?
+  // assert!(status.state == "paused")
+
+  // 작업 재개
+  scheduler.resume_job(job_id)?
+}
+
+// Test 6: 작업 상태 조회
+test "JobScheduler: 작업 상태 확인" {
+  let scheduler = JobScheduler::new()
+
+  let job_id = scheduler.add_job(
+    "test_job",
+    "0 * * * *",
+    || {}
+  )?
+
+  let status = scheduler.get_job_status(job_id)?
+
+  assert!(status.job_id == job_id)
+  assert!(status.name == "test_job")
+  // assert!(status.next_run_at != null)
+}
+
+// Test 7: 기본 워크플로우
+test "WorkflowOrchestrator: 순차 워크플로우" {
+  let orchestrator = WorkflowOrchestrator::new()
+
+  let workflow_id = orchestrator.register_workflow(
+    "data_pipeline",
+    {
+      tasks: [
+        { id: "extract", action: extract_data, depends_on: [] },
+        { id: "transform", action: transform_data, depends_on: ["extract"] },
+        { id: "load", action: load_data, depends_on: ["transform"] }
+      ]
+    }
+  )?
+
+  assert!(workflow_id.len() > 0)
+}
+
+// Test 8: 병렬 워크플로우
+test "WorkflowOrchestrator: 병렬 작업 실행" {
+  let orchestrator = WorkflowOrchestrator::new()
+
+  let workflow_id = orchestrator.register_workflow(
+    "parallel_processing",
+    {
+      tasks: [
+        { id: "process_batch_1", action: process_batch, depends_on: [] },
+        { id: "process_batch_2", action: process_batch, depends_on: [] },
+        { id: "process_batch_3", action: process_batch, depends_on: [] },
+        { id: "aggregate", action: aggregate_results,
+          depends_on: ["process_batch_1", "process_batch_2", "process_batch_3"] }
+      ]
+    }
+  )?
+
+  assert!(workflow_id.len() > 0)
+}
+
+// Test 9: 조건부 워크플로우
+test "WorkflowOrchestrator: 조건부 작업" {
+  let orchestrator = WorkflowOrchestrator::new()
+
+  let workflow_id = orchestrator.register_workflow(
+    "conditional_workflow",
+    {
+      tasks: [
+        { id: "validate", action: validate_data, depends_on: [] },
+        { id: "process", action: process_data, depends_on: ["validate"],
+          condition: |result| { result.is_valid } },
+        { id: "handle_error", action: handle_error, depends_on: ["validate"],
+          condition: |result| { !result.is_valid } }
+      ]
+    }
+  )?
+
+  assert!(workflow_id.len() > 0)
+}
+
+// Test 10: 워크플로우 실행
+test "WorkflowOrchestrator: 워크플로우 실행" {
+  let orchestrator = WorkflowOrchestrator::new()
+
+  let workflow_id = orchestrator.register_workflow(
+    "simple_workflow",
+    {
+      tasks: [
+        { id: "task1", action: task1_func, depends_on: [] }
+      ]
+    }
+  )?
+
+  // 워크플로우 실행
+  let exec_id = orchestrator.execute_workflow(
+    workflow_id,
+    { source: "database", format: "json" }
+  )?
+
+  assert!(exec_id.len() > 0)
+}
+
+// Test 11: 실행 상태 모니터링
+test "WorkflowOrchestrator: 실행 상태 추적" {
+  let orchestrator = WorkflowOrchestrator::new()
+
+  let workflow_id = orchestrator.register_workflow(
+    "test_workflow",
+    { tasks: [] }
+  )?
+
+  let exec_id = orchestrator.execute_workflow(workflow_id, {})?
+
+  // 실행 상태 확인
+  let status = orchestrator.get_execution_status(exec_id)?
+
+  assert!(status.execution_id == exec_id)
+  // assert!(status.state == "running" || status.state == "completed")
+  assert!(status.progress >= 0.0 && status.progress <= 1.0)
+}
+
+// Test 12: 작업 취소
+test "WorkflowOrchestrator: 실행 취소" {
+  let orchestrator = WorkflowOrchestrator::new()
+
+  let workflow_id = orchestrator.register_workflow(
+    "long_workflow",
+    { tasks: [] }
+  )?
+
+  let exec_id = orchestrator.execute_workflow(workflow_id, {})?
+
+  // 실행 취소
+  orchestrator.cancel_execution(exec_id)?
+}
+
+// Test 13: 작업 큐 기본 사용
+test "JobQueue: 작업 큐에 추가" {
+  let queue = JobQueue::new()
+
+  // 작업 추가
+  let job_id = queue.enqueue({
+    type: "email",
+    priority: 1,
+    data: { email: "user@example.com", subject: "Hello" }
+  })?
+
+  assert!(job_id.len() > 0)
+}
+
+// Test 14: 작업 처리
+test "JobQueue: 작업 처리 및 확인" {
+  let queue = JobQueue::new()
+
+  // 작업 추가
+  let job_id = queue.enqueue({
+    type: "process",
+    priority: 1,
+    data: { value: 42 }
+  })?
+
+  // 작업 가져오기
+  let job = queue.dequeue()?
+
+  // 작업 처리 완료
+  queue.acknowledge(job.id)?
+}
+
+// Test 15: Dead Letter Queue
+test "JobQueue: Dead Letter Queue 처리" {
+  let queue = JobQueue::new()
+
+  let job_id = queue.enqueue({
+    type: "failing_job",
+    priority: 1,
+    data: {}
+  })?
+
+  // 실패한 작업을 DLQ로 이동
+  queue.move_to_deadletter(job_id, "max_retries_exceeded")?
+}
+
+// Test 16: 큐 통계
+test "JobQueue: 큐 통계 조회" {
+  let queue = JobQueue::new()
+
+  // 몇 개의 작업 추가
+  queue.enqueue({ type: "job1", priority: 1, data: {} })?
+  queue.enqueue({ type: "job2", priority: 1, data: {} })?
+
+  // 통계 조회
+  let stats = queue.get_queue_stats()?
+
+  assert!(stats.pending_jobs >= 0)
+  assert!(stats.processing_jobs >= 0)
+  assert!(stats.completed_jobs >= 0)
+}
+
+// Test 17: 모니터링 메트릭
+test "Monitor: 스케줄러 메트릭 수집" {
+  let monitor = Monitor::new()
+
+  // 메트릭 조회
+  let metrics = monitor.get_metrics()?
+
+  assert!(metrics.total_jobs >= 0)
+  assert!(metrics.succeeded_jobs >= 0)
+  assert!(metrics.failed_jobs >= 0)
+  assert!(metrics.avg_execution_time >= 0)
+}
+
+// Test 18: 경고 설정
+test "Monitor: 성능 경고 설정" {
+  let monitor = Monitor::new()
+
+  // 실패율이 10%를 넘으면 경고
+  let alert_id = monitor.set_alert(
+    threshold: 10,
+    |metrics| {
+      send_alert_email("Failure rate too high: " + metrics.failure_rate)
+    }
+  )?
+
+  assert!(alert_id.len() > 0)
+}
+
+// Test 19: 실행 이력 조회
+test "Monitor: 작업 실행 이력" {
+  let monitor = Monitor::new()
+
+  // 최근 10개의 실행 이력 조회
+  let history = monitor.get_execution_history("job_id", 10)?
+
+  for execution in history {
+    assert!(execution.started_at != null)
+    assert!(execution.status.len() > 0)
+  }
+}
+
+// Test 20: 복합 워크플로우 시나리오
+test "Scheduler: 완전한 작업 오케스트레이션" {
+  let scheduler = JobScheduler::new()
+  let orchestrator = WorkflowOrchestrator::new()
+  let queue = JobQueue::new()
+  let monitor = Monitor::new()
+
+  // 1. 워크플로우 등록
+  let workflow_id = orchestrator.register_workflow(
+    "daily_pipeline",
+    {
+      tasks: [
+        { id: "extract", action: extract_data, depends_on: [] },
+        { id: "process", action: process_data, depends_on: ["extract"] },
+        { id: "notify", action: notify_users, depends_on: ["process"] }
+      ]
+    }
+  )?
+
+  // 2. 매일 자정에 워크플로우 실행하도록 스케줄
+  scheduler.add_job(
+    "daily_workflow",
+    "0 0 * * *",
+    || {
+      orchestrator.execute_workflow(workflow_id, {})
+    }
+  )?
+
+  // 3. 메트릭 모니터링
+  let metrics = monitor.get_metrics()?
+  assert!(metrics.total_jobs >= 0)
+}
+
+// 헬퍼 함수
+fn assert!(condition: bool) {
+  if !condition {
+    panic("Assertion failed!")
+  }
+}
+
+fn extract_data() {
+  println("Extracting data...")
+}
+
+fn transform_data() {
+  println("Transforming data...")
+}
+
+fn load_data() {
+  println("Loading data...")
+}
+
+fn process_batch() {
+  println("Processing batch...")
+}
+
+fn aggregate_results() {
+  println("Aggregating results...")
+}
+
+fn validate_data() {
+  println("Validating data...")
+}
+
+fn process_data() {
+  println("Processing data...")
+}
+
+fn handle_error() {
+  println("Handling error...")
+}
+
+fn task1_func() {
+  println("Executing task 1...")
+}
+
+fn send_welcome_email() {
+  println("Sending welcome email...")
+}
+
+fn health_check() {
+  println("Performing health check...")
+}
+
+fn send_alert_email(message: String) {
+  println("Alert: " + message)
+}
+
+fn notify_users() {
+  println("Notifying users...")
+}

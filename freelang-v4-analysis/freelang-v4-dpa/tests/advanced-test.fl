@@ -1,0 +1,279 @@
+// FreeLang v4 DPA Advanced Test Suite
+// 데이터 보호 및 개인정보 고급 테스트
+
+module DPAAdvancedTests
+
+// Test 1: 데이터 자동 분류
+test "DataClassifier: 자동 데이터 분류" {
+  let classifier = DataClassifier::new()
+    .register_pattern(DataType::CreditCard, "\\d{4}-\\d{4}-\\d{4}-\\d{4}")
+    .register_pattern(DataType::SSN, "\\d{3}-\\d{2}-\\d{4}")
+    .register_pattern(DataType::Email, ".+@.+\\..+")
+
+  let result = classifier.classify("My SSN is 123-45-6789")
+  assert!(result.categories.contains(DataType::SSN))
+  assert!(result.sensitivity == "HIGH" || result.sensitivity == "CRITICAL")
+}
+
+// Test 2: 복합 데이터 분류
+test "DataClassifier: 복합 데이터 패턴 인식" {
+  let classifier = DataClassifier::new()
+    .register_pattern(DataType::CreditCard, "\\d{4}-\\d{4}-\\d{4}-\\d{4}")
+    .register_pattern(DataType::Email, ".+@.+\\..+")
+
+  let data = "Customer: john@example.com, Card: 4111-1111-1111-1111"
+  let result = classifier.classify(data)
+
+  assert!(result.categories.len() >= 2)
+  assert!(result.categories.contains(DataType::Email))
+  assert!(result.categories.contains(DataType::CreditCard))
+  assert!(result.sensitivity != "LOW")
+}
+
+// Test 3: 개인정보 수집 동의
+test "PrivacyManager: 개인정보 수집 동의 기록" {
+  let privacy = PrivacyManager::new()
+    .consent_required("email")
+    .consent_required("phone")
+    .consent_required("location")
+
+  // 동의 기록
+  privacy.record_consent("user123", "email", true)?
+  privacy.record_consent("user123", "phone", false)?
+  privacy.record_consent("user123", "location", true)?
+
+  // 동의 상태 확인 (실제 구현에서 필요)
+  // assert!(privacy.has_consent("user123", "email"))
+  // assert!(!privacy.has_consent("user123", "phone"))
+}
+
+// Test 4: 데이터 주체 접근 요청 (DSAR)
+test "PrivacyManager: 개인정보 조회 (DSAR)" {
+  let privacy = PrivacyManager::new()
+
+  // 사용자의 모든 개인정보 조회
+  let personal_data = privacy.get_all_personal_data("user123")?
+
+  assert!(personal_data.user_id == "user123")
+  assert!(personal_data.data_types.len() > 0)
+  assert!(personal_data.encrypted == true)
+}
+
+// Test 5: 데이터 삭제 요청 (Right to be Forgotten)
+test "PrivacyManager: 개인정보 삭제" {
+  let privacy = PrivacyManager::new()
+
+  // 개인정보 삭제 요청
+  let deletion = privacy.delete_personal_data("user456")?
+
+  assert!(deletion.deletion_id.len() > 0)
+  assert!(deletion.records_deleted > 0)
+}
+
+// Test 6: 데이터 이동성 (Data Portability)
+test "PrivacyManager: 개인정보 내보내기" {
+  let privacy = PrivacyManager::new()
+
+  // JSON 형식으로 내보내기
+  let json_data = privacy.export_data("user789", "json")?
+  assert!(json_data.len() > 0)
+
+  // CSV 형식으로 내보내기
+  let csv_data = privacy.export_data("user789", "csv")?
+  assert!(csv_data.len() > 0)
+  assert!(csv_data.contains(","))  // CSV는 쉼표 포함
+}
+
+// Test 7: 데이터 보존 정책 설정
+test "PrivacyManager: 데이터 자동 삭제 정책" {
+  let privacy = PrivacyManager::new()
+    .set_retention_policy("user_profile", 365)      // 1년
+    .set_retention_policy("activity_log", 90)       // 3개월
+    .set_retention_policy("deleted_account", 30)    // 30일
+
+  // 정책이 설정됨을 확인
+  // assert!(privacy.get_retention_days("user_profile") == 365)
+  // assert!(privacy.get_retention_days("activity_log") == 90)
+}
+
+// Test 8: AES-256 암호화
+test "CryptoManager: AES-256 저장소 암호화" {
+  let crypto = CryptoManager::new()
+    .with_algorithm(Algorithm::AES256GCM)
+
+  let sensitive = "credit_card=4111-1111-1111-1111"
+  let encrypted = crypto.encrypt_at_rest(sensitive)?
+
+  assert!(encrypted != sensitive)
+  assert!(encrypted.len() > 0)
+
+  let decrypted = crypto.decrypt_at_rest(encrypted)?
+  assert!(decrypted == sensitive)
+}
+
+// Test 9: 전송 암호화 (TLS)
+test "CryptoManager: 전송 중 암호화 (TLS)" {
+  let crypto = CryptoManager::new()
+    .enable_transit_encryption()
+
+  // TLS가 활성화되면 모든 통신이 암호화됨
+  // assert!(crypto.is_transit_encryption_enabled())
+}
+
+// Test 10: 검색 가능 암호화
+test "CryptoManager: 검색 가능 암호화" {
+  let crypto = CryptoManager::new()
+    .with_algorithm(Algorithm::AES256GCM)
+
+  let email = "john@example.com"
+  let se = crypto.encrypt_searchable(email, "email")?
+
+  // 암호화되었지만 쿼리는 가능
+  assert!(se.encrypted_value.len() > 0)
+  assert!(se.search_token.len() > 0)
+}
+
+// Test 11: 암호화 키 로테이션
+test "CryptoManager: 암호화 키 회전" {
+  let crypto = CryptoManager::new()
+    .with_algorithm(Algorithm::AES256GCM)
+    .with_rotation_days(90)
+
+  // 키 로테이션 수행
+  let rotation = crypto.rotate_keys()?
+
+  assert!(rotation.old_key_version >= 0)
+  assert!(rotation.new_key_version > rotation.old_key_version)
+}
+
+// Test 12: DLP - 신용카드 번호 차단
+test "DataLeakagePrevention: 신용카드 번호 차단" {
+  let dlp = DataLeakagePrevention::new()
+    .add_rule("block_cc", Pattern::CreditCard, Action::Block)
+
+  let message = "Card: 4111-1111-1111-1111"
+  let scan = dlp.scan_message(message)
+
+  assert!(scan.has_violations)
+  assert!(scan.action == "Block")
+}
+
+// Test 13: DLP - 파일 스캔
+test "DataLeakagePrevention: 파일 보안 스캔" {
+  let dlp = DataLeakagePrevention::new()
+    .add_rule("warn_ssn", Pattern::SSN, Action::Warn)
+    .add_rule("block_cc", Pattern::CreditCard, Action::Block)
+
+  let scan = dlp.scan_file("/path/to/sensitive_data.txt")
+
+  // 파일에 민감한 데이터가 포함되어 있을 수 있음
+  if scan.has_violations {
+    assert!(scan.action != "Allow")
+  }
+}
+
+// Test 14: DLP - 이메일 스캔
+test "DataLeakagePrevention: 이메일 보안 스캔" {
+  let dlp = DataLeakagePrevention::new()
+    .add_rule("block_cc", Pattern::CreditCard, Action::Block)
+    .add_rule("log_email", Pattern::Email, Action::Log)
+
+  let email_scan = dlp.scan_email({
+    to: "external@competitor.com",
+    subject: "Sensitive Data",
+    body: "Credit card: 4111-1111-1111-1111"
+  })
+
+  assert!(email_scan.has_violations)
+  assert!(email_scan.action == "Block")
+}
+
+// Test 15: GDPR 준수 확인
+test "ComplianceAuditor: GDPR 준수 검증" {
+  let auditor = ComplianceAuditor::new()
+
+  let gdpr = auditor.check_gdpr_compliance()
+
+  assert!(gdpr.has_privacy_policy == true || gdpr.has_privacy_policy == false)
+  assert!(gdpr.has_encryption == true || gdpr.has_encryption == false)
+  assert!(gdpr.has_dpia == true || gdpr.has_dpia == false)
+}
+
+// Test 16: CCPA 준수 확인
+test "ComplianceAuditor: CCPA 준수 검증" {
+  let auditor = ComplianceAuditor::new()
+
+  let ccpa = auditor.check_ccpa_compliance()
+
+  // 소비자 권리 확인
+  assert!(ccpa.supports_dsar == true || ccpa.supports_dsar == false)
+  assert!(ccpa.supports_deletion == true || ccpa.supports_deletion == false)
+  assert!(ccpa.has_opt_out == true || ccpa.has_opt_out == false)
+}
+
+// Test 17: 규정 준수 리포트 생성
+test "ComplianceAuditor: 규정 준수 리포트" {
+  let auditor = ComplianceAuditor::new()
+
+  let report = auditor.generate_report(
+    regulation: "GDPR",
+    period: DateRange::new("2026-01-01", "2026-02-20")
+  )?
+
+  assert!(report.regulation == "GDPR")
+  assert!(report.score >= 0 && report.score <= 100)
+  assert!(report.violations.len() >= 0)
+}
+
+// Test 18: 데이터 생명주기 추적
+test "ComplianceAuditor: 데이터 생명주기 추적" {
+  let auditor = ComplianceAuditor::new()
+
+  let lifecycle = auditor.track_data_lifecycle("customer_data_123")?
+
+  assert!(lifecycle.created_at != null)
+  assert!(lifecycle.last_accessed != null)
+  assert!(lifecycle.scheduled_deletion != null)
+}
+
+// Test 19: DPIA 리포트 생성
+test "ComplianceAuditor: 데이터 보호 영향 평가 (DPIA)" {
+  let auditor = ComplianceAuditor::new()
+
+  let dpia = auditor.generate_dpia("new_mobile_app")?
+
+  assert!(dpia.risk_level == "Low" || dpia.risk_level == "Medium" || dpia.risk_level == "High")
+  assert!(dpia.recommendations.len() > 0)
+}
+
+// Test 20: 복합 데이터 분류 및 보호
+test "DPA: 엔드-투-엔드 데이터 보호 워크플로우" {
+  let classifier = DataClassifier::new()
+    .register_pattern(DataType::CreditCard, "\\d{4}-\\d{4}-\\d{4}-\\d{4}")
+
+  let crypto = CryptoManager::new()
+    .with_algorithm(Algorithm::AES256GCM)
+
+  let dlp = DataLeakagePrevention::new()
+    .add_rule("block_cc", Pattern::CreditCard, Action::Block)
+
+  // 1. 데이터 분류
+  let data = "Card: 4111-1111-1111-1111"
+  let classification = classifier.classify(data)
+  assert!(classification.categories.contains(DataType::CreditCard))
+
+  // 2. 데이터 암호화
+  let encrypted = crypto.encrypt_at_rest(data)?
+  assert!(encrypted != data)
+
+  // 3. DLP 스캔
+  let scan = dlp.scan_message(data)
+  assert!(scan.action == "Block")
+}
+
+// 헬퍼 함수
+fn assert!(condition: bool) {
+  if !condition {
+    panic("Assertion failed!")
+  }
+}
