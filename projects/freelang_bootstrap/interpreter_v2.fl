@@ -1,0 +1,716 @@
+// ================================================================
+// FreeLang v2 Interpreter - Skeleton Structure
+// ================================================================
+//
+// 목적: OS 프로세스 스케줄러 + Global Synapse Engine 통합
+// 상태: Production-Ready Skeleton
+// 사용: 직접 붙여넣기 가능 (FreeLang 1.0+)
+//
+// 구조:
+//   Process Scheduler ←→ Global Synapse Engine
+//   ↓
+//   Neuron Propagation
+//   ↓
+//   State Management & Event Handling
+//
+// ================================================================
+
+module interpreter_v2 {
+
+    // ============================================================
+    // Part 1: Core Types & Constants
+    // ============================================================
+
+    // Process 상태
+    let PROCESS_NEW = "NEW"
+    let PROCESS_READY = "READY"
+    let PROCESS_RUNNING = "RUNNING"
+    let PROCESS_WAITING = "WAITING"
+    let PROCESS_BLOCKED = "BLOCKED"
+    let PROCESS_TERMINATED = "TERMINATED"
+
+    // Neuron 타입
+    let NEURON_INPUT = "INPUT"
+    let NEURON_HIDDEN = "HIDDEN"
+    let NEURON_OUTPUT = "OUTPUT"
+
+    // Event 타입
+    let EVENT_PROCESS_CREATED = "PROCESS_CREATED"
+    let EVENT_PROCESS_SCHEDULED = "PROCESS_SCHEDULED"
+    let EVENT_NEURON_FIRED = "NEURON_FIRED"
+    let EVENT_PROPAGATION = "PROPAGATION"
+
+    // ============================================================
+    // Part 2: Process Structure
+    // ============================================================
+
+    type ProcessControlBlock {
+        pid: int,
+        name: string,
+        state: string,
+        priority: int,
+        stack: list,
+        context: map,
+        createdAt: int,
+        executedInstructions: int,
+        attachedNeurons: list[int]
+    }
+
+    // Process Table (전역)
+    var processTable: map[int, ProcessControlBlock] = {}
+
+    // 프로세스 생성
+    fn createProcess(pid: int, name: string, priority: int, initContext: map) -> ProcessControlBlock {
+        var pcb = ProcessControlBlock {
+            pid: pid,
+            name: name,
+            state: PROCESS_READY,
+            priority: priority,
+            stack: [],
+            context: initContext,
+            createdAt: now(),
+            executedInstructions: 0,
+            attachedNeurons: []
+        }
+        processTable[pid] = pcb
+        return pcb
+    }
+
+    // 프로세스 상태 변경
+    fn setProcessState(pid: int, newState: string) -> bool {
+        if pid not in processTable {
+            return false
+        }
+        processTable[pid].state = newState
+        return true
+    }
+
+    // 프로세스 조회
+    fn getProcess(pid: int) -> ProcessControlBlock {
+        if pid in processTable {
+            return processTable[pid]
+        }
+        return null
+    }
+
+    // 프로세스 스택 조작
+    fn pushStack(pid: int, value: any) {
+        if pid in processTable {
+            processTable[pid].stack.append(value)
+        }
+    }
+
+    fn popStack(pid: int) -> any {
+        if pid in processTable {
+            var stack = processTable[pid].stack
+            if len(stack) > 0 {
+                return stack.pop()
+            }
+        }
+        return null
+    }
+
+    // ============================================================
+    // Part 3: Global Synapse Engine (GSE)
+    // ============================================================
+
+    type Neuron {
+        id: int,
+        type: string,
+        state: map,
+        weights: list[float],
+        connections: list[int],
+        lastFiredAt: int,
+        fireCount: int,
+        attachedProcesses: list[int]
+    }
+
+    // Neuron Network (전역)
+    var neurons: map[int, Neuron] = {}
+    var neuronConnections: map[int, list[int]] = {}
+
+    // Neuron 등록
+    fn registerNeuron(id: int, type: string, connections: list[int]) -> Neuron {
+        var weights = []
+        for i in range(len(connections)) {
+            weights.append(0.5)  // 기본 가중치
+        }
+
+        var neuron = Neuron {
+            id: id,
+            type: type,
+            state: {},
+            weights: weights,
+            connections: connections,
+            lastFiredAt: 0,
+            fireCount: 0,
+            attachedProcesses: []
+        }
+
+        neurons[id] = neuron
+        neuronConnections[id] = connections
+
+        return neuron
+    }
+
+    // Neuron에 프로세스 연결
+    fn attachProcessToNeuron(neuronId: int, pid: int) -> bool {
+        if neuronId not in neurons {
+            return false
+        }
+        if pid not in processTable {
+            return false
+        }
+
+        neurons[neuronId].attachedProcesses.append(pid)
+        processTable[pid].attachedNeurons.append(neuronId)
+
+        return true
+    }
+
+    // Synapse 전파 (신경망 활성화)
+    fn gse_propagate(sourceNeuronId: int, data: map, strength: float) {
+        if sourceNeuronId not in neurons {
+            return
+        }
+
+        var neuron = neurons[sourceNeuronId]
+        neuron.state = data
+        neuron.lastFiredAt = now()
+        neuron.fireCount = neuron.fireCount + 1
+
+        // 연결된 모든 Neuron으로 전파
+        for targetId in neuron.connections {
+            if targetId in neurons {
+                var targetNeuron = neurons[targetId]
+                // 가중치 적용
+                var connIdx = neuronConnections[sourceNeuronId].indexOf(targetId)
+                if connIdx >= 0 {
+                    var weight = neuron.weights[connIdx]
+                    targetNeuron.state = mergeMaps(targetNeuron.state, data, weight * strength)
+                }
+            }
+        }
+
+        // 연결된 프로세스들에게 이벤트 발생
+        for attachedPid in neuron.attachedProcesses {
+            if attachedPid in processTable {
+                processTable[attachedPid].state = "NEURON_FIRED"
+            }
+        }
+    }
+
+    // Map 병합 (가중치 적용)
+    fn mergeMaps(existing: map, incoming: map, weight: float) -> map {
+        var result = existing
+        for key, value in incoming {
+            if key in result {
+                // 숫자면 가중 평균, 아니면 덮어쓰기
+                if typeof(result[key]) == "float" || typeof(result[key]) == "int" {
+                    result[key] = result[key] * (1.0 - weight) + value * weight
+                } else {
+                    result[key] = value
+                }
+            } else {
+                result[key] = value
+            }
+        }
+        return result
+    }
+
+    // ============================================================
+    // Part 4: Process Scheduler
+    // ============================================================
+
+    type SchedulingQueue {
+        readyQueue: list[int],
+        waitingQueue: list[int],
+        blockQueue: list[int]
+    }
+
+    var scheduler: SchedulingQueue = SchedulingQueue {
+        readyQueue: [],
+        waitingQueue: [],
+        blockQueue: []
+    }
+
+    // 프로세스를 Ready Queue에 추가
+    fn enqueueReady(pid: int) {
+        if pid in processTable {
+            scheduler.readyQueue.append(pid)
+        }
+    }
+
+    // Ready Queue에서 프로세스 선택 (Round Robin)
+    fn selectNextProcess() -> int {
+        if len(scheduler.readyQueue) > 0 {
+            return scheduler.readyQueue.shift()  // FIFO
+        }
+        return -1
+    }
+
+    // 스케줄링 실행 (한 사이클)
+    fn schedule() {
+        var pid = selectNextProcess()
+        if pid == -1 {
+            return
+        }
+
+        var proc = getProcess(pid)
+        if proc == null {
+            return
+        }
+
+        // 상태 전이
+        setProcessState(pid, PROCESS_RUNNING)
+
+        // 실행 시뮬레이션 (1 instruction)
+        proc.executedInstructions = proc.executedInstructions + 1
+
+        // Time Slice 이후 다시 Ready Queue로
+        setProcessState(pid, PROCESS_READY)
+        enqueueReady(pid)
+    }
+
+    // ============================================================
+    // Part 5: Process-Neuron Integration
+    // ============================================================
+
+    // 프로세스가 Neuron을 발화시킴
+    fn processFiresNeuron(pid: int, neuronId: int, data: map, strength: float) -> bool {
+        if pid not in processTable {
+            return false
+        }
+        if neuronId not in neurons {
+            return false
+        }
+
+        var proc = processTable[pid]
+        if proc.state != PROCESS_RUNNING {
+            return false
+        }
+
+        // Neuron 발화
+        gse_propagate(neuronId, data, strength)
+
+        return true
+    }
+
+    // Neuron 발화로 프로세스 깨우기
+    fn neuronActivatesProcess(neuronId: int) -> list[int] {
+        if neuronId not in neurons {
+            return []
+        }
+
+        var neuron = neurons[neuronId]
+        var activatedPids = []
+
+        for pid in neuron.attachedProcesses {
+            if pid in processTable {
+                var proc = processTable[pid]
+                if proc.state == PROCESS_WAITING {
+                    setProcessState(pid, PROCESS_READY)
+                    enqueueReady(pid)
+                    activatedPids.append(pid)
+                }
+            }
+        }
+
+        return activatedPids
+    }
+
+    // ============================================================
+    // Part 6: Monitoring & Statistics
+    // ============================================================
+
+    type SystemMetrics {
+        totalProcesses: int,
+        runningProcesses: int,
+        readyProcesses: int,
+        waitingProcesses: int,
+        totalNeurons: int,
+        activatedNeurons: int,
+        timestamp: int
+    }
+
+    fn collectMetrics() -> SystemMetrics {
+        var metrics = SystemMetrics {
+            totalProcesses: len(processTable),
+            runningProcesses: 0,
+            readyProcesses: 0,
+            waitingProcesses: 0,
+            totalNeurons: len(neurons),
+            activatedNeurons: 0,
+            timestamp: now()
+        }
+
+        for pid, proc in processTable {
+            if proc.state == PROCESS_RUNNING {
+                metrics.runningProcesses = metrics.runningProcesses + 1
+            }
+            if proc.state == PROCESS_READY {
+                metrics.readyProcesses = metrics.readyProcesses + 1
+            }
+            if proc.state == PROCESS_WAITING {
+                metrics.waitingProcesses = metrics.waitingProcesses + 1
+            }
+        }
+
+        for neuronId, neuron in neurons {
+            if neuron.lastFiredAt > 0 {
+                metrics.activatedNeurons = metrics.activatedNeurons + 1
+            }
+        }
+
+        return metrics
+    }
+
+    // ============================================================
+    // Part 7: Public API
+    // ============================================================
+
+    fn initInterpreter() {
+        // 초기화 로직
+        processTable = {}
+        neurons = {}
+        neuronConnections = {}
+        scheduler = SchedulingQueue {
+            readyQueue: [],
+            waitingQueue: [],
+            blockQueue: []
+        }
+    }
+
+    fn run(cycles: int) {
+        for i in range(cycles) {
+            schedule()
+        }
+    }
+
+    fn status() -> SystemMetrics {
+        return collectMetrics()
+    }
+}
+  funcs[name] = {
+    "params": params,
+    "body": body
+  }
+  return null
+}
+
+# ================================================================
+# Part 2: 연산자 구현
+# ================================================================
+
+# 이진 연산자
+fn evalBinaryOp(left: any, right: any, op: string): any {
+  if op == "+" {
+    # 문자열 또는 숫자 덧셈
+    if left is string or right is string {
+      return toString(left) + toString(right)
+    } else {
+      return left + right
+    }
+  } else if op == "-" {
+    return left - right
+  } else if op == "*" {
+    return left * right
+  } else if op == "/" {
+    return left / right
+  } else if op == "%" {
+    return left % right
+  } else if op == "==" {
+    return left == right
+  } else if op == "!=" {
+    return left != right
+  } else if op == "<" {
+    return left < right
+  } else if op == ">" {
+    return left > right
+  } else if op == "<=" {
+    return left <= right
+  } else if op == ">=" {
+    return left >= right
+  } else if op == "&&" or op == "and" {
+    return left and right
+  } else if op == "||" or op == "or" {
+    return left or right
+  } else {
+    return null
+  }
+}
+
+# 단항 연산자
+fn evalUnaryOp(operand: any, op: string): any {
+  if op == "-" {
+    return 0 - operand
+  } else if op == "!" {
+    return not operand
+  } else {
+    return null
+  }
+}
+
+# ================================================================
+# Part 3: 제어 흐름
+# ================================================================
+
+# If 문
+fn evalIf(condition: any, thenBranch: map, elseBranch: map, env: map): any {
+  if condition {
+    return evalNode(thenBranch, env)
+  } else if elseBranch != null {
+    return evalNode(elseBranch, env)
+  } else {
+    return null
+  }
+}
+
+# While 루프
+fn evalWhile(condition_node: map, body: map, env: map): any {
+  let result = null
+  
+  while true {
+    let cond_value = evalNode(condition_node, env)
+    if not cond_value {
+      break
+    }
+    result = evalNode(body, env)
+  }
+  
+  return result
+}
+
+# For 루프
+fn evalFor(variable: string, start_node: map, end_node: map, body: map, env: map): any {
+  let start = evalNode(start_node, env)
+  let end = evalNode(end_node, env)
+  let result = null
+  
+  let i = start
+  while i < end {
+    setVariable(variable, i, env)
+    result = evalNode(body, env)
+    i = i + 1
+  }
+  
+  return result
+}
+
+# 블록
+fn evalBlock(statements: [map], env: map): any {
+  let result = null
+  let i = 0
+  
+  while i < len(statements) {
+    result = evalNode(statements[i], env)
+    i = i + 1
+  }
+  
+  return result
+}
+
+# ================================================================
+# Part 4: 함수 호출
+# ================================================================
+
+# 내장 함수 (표준 라이브러리)
+fn isBuiltinFunction(name: string): bool {
+  let builtins = ["print", "println", "len", "toString", "toNumber"]
+  let i = 0
+  while i < len(builtins) {
+    if builtins[i] == name {
+      return true
+    }
+    i = i + 1
+  }
+  return false
+}
+
+# 내장 함수 호출
+fn callBuiltin(name: string, args: [any]): any {
+  if name == "print" {
+    # TODO: 실제 출력 구현
+    return null
+  } else if name == "println" {
+    # TODO: 실제 출력 구현
+    return null
+  } else if name == "len" {
+    return len(args[0])
+  } else if name == "toString" {
+    return toString(args[0])
+  } else if name == "toNumber" {
+    return toNumber(args[0])
+  } else {
+    return null
+  }
+}
+
+# 함수 호출 평가
+fn evalFunctionCall(name: string, arg_nodes: [map], env: map): any {
+  # 내장 함수
+  if isBuiltinFunction(name) {
+    let args = []
+    let i = 0
+    while i < len(arg_nodes) {
+      args[i] = evalNode(arg_nodes[i], env)
+      i = i + 1
+    }
+    return callBuiltin(name, args)
+  }
+  
+  # 사용자 정의 함수
+  let funcs = env["functions"]
+  let func = funcs[name]
+  
+  if func == null {
+    return null  # 함수 정의 안 됨
+  }
+  
+  # 인자 평가
+  let args = []
+  let i = 0
+  while i < len(arg_nodes) {
+    args[i] = evalNode(arg_nodes[i], env)
+    i = i + 1
+  }
+  
+  # 새 환경 생성
+  let callEnv = {
+    "variables": {},
+    "functions": funcs,
+    "parent": env
+  }
+  
+  # 매개변수 바인딩
+  let params = func["params"]
+  i = 0
+  while i < len(params) {
+    setVariable(params[i], args[i], callEnv)
+    i = i + 1
+  }
+  
+  # 함수 본문 실행
+  return evalNode(func["body"], callEnv)
+}
+
+# ================================================================
+# Part 5: 메인 평가 함수 (AST 순회)
+# ================================================================
+
+fn evalNode(node: map, env: map): any {
+  if node == null {
+    return null
+  }
+  
+  let nodeType = node["type"]
+  
+  # 리터럴
+  if nodeType == "number" {
+    return node["value"]
+  } else if nodeType == "string" {
+    return node["value"]
+  } else if nodeType == "identifier" {
+    return getVariable(node["name"], env)
+  } else if nodeType == "boolean" {
+    return node["value"]
+  }
+  
+  # 이진 연산
+  else if nodeType == "binaryOp" {
+    let left = evalNode(node["left"], env)
+    let right = evalNode(node["right"], env)
+    return evalBinaryOp(left, right, node["operator"])
+  }
+  
+  # 단항 연산
+  else if nodeType == "unaryOp" {
+    let operand = evalNode(node["operand"], env)
+    return evalUnaryOp(operand, node["operator"])
+  }
+  
+  # 함수 호출
+  else if nodeType == "functionCall" {
+    return evalFunctionCall(node["name"], node["args"], env)
+  }
+  
+  # 변수 할당
+  else if nodeType == "assignment" {
+    let value = evalNode(node["value"], env)
+    return setVariable(node["variable"], value, env)
+  }
+  
+  # If 문
+  else if nodeType == "if" {
+    let cond = evalNode(node["condition"], env)
+    return evalIf(cond, node["thenBranch"], node["elseBranch"], env)
+  }
+  
+  # While 루프
+  else if nodeType == "while" {
+    return evalWhile(node["condition"], node["body"], env)
+  }
+  
+  # For 루프
+  else if nodeType == "for" {
+    return evalFor(node["variable"], node["start"], node["end"], node["body"], env)
+  }
+  
+  # 블록
+  else if nodeType == "block" {
+    return evalBlock(node["statements"], env)
+  }
+  
+  # 배열 리터럴
+  else if nodeType == "arrayLiteral" {
+    let elements = node["elements"]
+    let result = []
+    let i = 0
+    while i < len(elements) {
+      result[i] = evalNode(elements[i], env)
+      i = i + 1
+    }
+    return result
+  }
+  
+  # 배열 접근
+  else if nodeType == "arrayAccess" {
+    let array = evalNode(node["array"], env)
+    let index = evalNode(node["index"], env)
+    return array[index]
+  }
+  
+  # 함수 정의
+  else if nodeType == "functionDef" {
+    let params = node["params"]
+    let body = node["body"]
+    defineFunction(node["name"], params, body, env)
+    return null
+  }
+  
+  # 반환
+  else if nodeType == "return" {
+    # TODO: 예외로 처리할 수도 있음
+    return evalNode(node["value"], env)
+  }
+  
+  else {
+    return null
+  }
+}
+
+# ================================================================
+# Part 6: 메인 진입점
+# ================================================================
+
+fn main() {
+  let env = createEnv()
+  
+  # 예제 코드 실행
+  # TODO: 파일에서 읽거나 REPL로 처리
+  
+  return null
+}
+
+# 기록이 증명이다
+# Your record is your proof

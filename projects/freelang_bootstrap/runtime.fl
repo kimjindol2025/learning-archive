@@ -1,0 +1,173 @@
+# FreeLang 자체 런타임 (runtime.fl)
+# 부트스트랩에서 실행됨
+# 목표: Phase B 완성 (4주)
+
+print("=== FreeLang Runtime v1.0 ===")
+
+# ============================================================
+# Week 1: 기본 수학 함수
+# ============================================================
+
+fn square(x) {
+  return x * x
+}
+
+fn cube(x) {
+  return x * x * x
+}
+
+fn power(x, n) {
+  if (n == 0) {
+    return 1
+  } else {
+    return x * power(x, n - 1)
+  }
+}
+
+# ============================================================
+# Week 2: 배열 처리 함수
+# ============================================================
+
+fn sum_array(arr) {
+  total = 0
+  i = 0
+  while (i < len(arr)) {
+    total = total + arr[i]
+    i = i + 1
+  }
+  return total
+}
+
+fn max_array(arr) {
+  if (len(arr) == 0) {
+    return null
+  }
+  max = arr[0]
+  i = 1
+  while (i < len(arr)) {
+    if (arr[i] > max) {
+      max = arr[i]
+    }
+    i = i + 1
+  }
+  return max
+}
+
+fn min_array(arr) {
+  if (len(arr) == 0) {
+    return null
+  }
+  min = arr[0]
+  i = 1
+  while (i < len(arr)) {
+    if (arr[i] < min) {
+      min = arr[i]
+    }
+    i = i + 1
+  }
+  return min
+}
+
+# ============================================================
+# Week 3: 고급 함수
+# ============================================================
+
+fn count_if(arr, check) {
+  count = 0
+  i = 0
+  while (i < len(arr)) {
+    if (check(arr[i])) {
+      count = count + 1
+    }
+    i = i + 1
+  }
+  return count
+}
+
+fn find_first(arr, check) {
+  i = 0
+  while (i < len(arr)) {
+    if (check(arr[i])) {
+      return arr[i]
+    }
+    i = i + 1
+  }
+  return null
+}
+
+# ============================================================
+# Week 4: 통합 테스트
+# ============================================================
+
+fn test_math() {
+  print("\n=== Math Functions ===")
+  print("square(5) = ")
+  print(square(5))
+
+  print("cube(3) = ")
+  print(cube(3))
+
+  print("power(2, 8) = ")
+  print(power(2, 8))
+}
+
+fn test_arrays() {
+  print("\n=== Array Functions ===")
+  numbers = [10, 20, 30, 40, 50]
+
+  print("Array: ")
+  print(numbers)
+
+  print("Sum: ")
+  print(sum_array(numbers))
+
+  print("Max: ")
+  print(max_array(numbers))
+
+  print("Min: ")
+  print(min_array(numbers))
+}
+
+fn is_odd(x) {
+  return x % 2 == 1
+}
+
+fn is_even(x) {
+  return x % 2 == 0
+}
+
+fn test_advanced() {
+  print("\n=== Advanced Functions ===")
+
+  data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+  # 홀수를 직접 세기
+  print("Counting odd numbers: ")
+  odd_count = 0
+  i = 0
+  while (i < len(data)) {
+    if (data[i] % 2 == 1) {
+      odd_count = odd_count + 1
+    }
+    i = i + 1
+  }
+  print(odd_count)
+
+  # 첫 번째 짝수 찾기
+  print("First even number: ")
+  i = 0
+  while (i < len(data)) {
+    if (data[i] % 2 == 0) {
+      print(data[i])
+      i = len(data)  # 루프 종료
+    }
+    i = i + 1
+  }
+}
+
+# 모든 테스트 실행
+test_math()
+test_arrays()
+test_advanced()
+
+print("\n=== Runtime Tests Complete ===")

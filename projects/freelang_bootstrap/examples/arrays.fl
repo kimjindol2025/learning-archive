@@ -1,0 +1,41 @@
+# FreeLang Bootstrap - 배열 예제
+
+# 배열 생성
+numbers = [1, 2, 3, 4, 5]
+print("배열: ")
+print(numbers)
+
+# 배열 요소 접근
+print("\n요소 접근:")
+print(numbers[0])
+print(numbers[2])
+print(numbers[4])
+
+# 배열과 루프
+print("\n배열 순회:")
+i = 0
+while (i < 5) {
+  print(numbers[i])
+  i = i + 1
+}
+
+# 배열 길이
+print("\n배열 길이:")
+len_val = len(numbers)
+print(len_val)
+
+# 문자열 배열
+words = ["apple", "banana", "cherry", "date"]
+print("\n문자열 배열:")
+print(words)
+print(words[1])
+
+# 배열 필터링 예제
+print("\n필터링 (3보다 큰 수):")
+i = 0
+while (i < 5) {
+  if (numbers[i] > 3) {
+    print(numbers[i])
+  }
+  i = i + 1
+}

@@ -1,0 +1,642 @@
+# ================================================================
+# FreeLang Bootstrap Parser (Week 2, Phase B-4)
+# TypeScript parser.ts → FreeLang parser.fl 변환
+# 토큰 → AST (Abstract Syntax Tree) 변환
+#
+# 구조:
+# 1. AST 노드 생성 함수들
+# 2. Parser 상태 관리
+# 3. parse() - 진입점
+# 4. statement() - 문장 파싱
+# 5. expression() - 식 파싱 (우선순위)
+# ================================================================
+
+# ================================================================
+# AST 노드 생성 함수들 (12+ 타입)
+# ================================================================
+
+# Statement 노드들
+fn createAssignment(variable: string, value: {}) {
+  return { "type": "assignment", "variable": variable, "value": value }
+}
+
+fn createFunctionDefinition(name: string, params: [], body: []) {
+  return { "type": "functionDefinition", "name": name, "params": params, "body": body }
+}
+
+fn createIfStatement(condition: {}, thenBranch: [], elseBranch: []) {
+  return { "type": "ifStatement", "condition": condition, "then": thenBranch, "else": elseBranch }
+}
+
+fn createWhileStatement(condition: {}, body: []) {
+  return { "type": "whileStatement", "condition": condition, "body": body }
+}
+
+fn createReturnStatement(value: {}) {
+  return { "type": "returnStatement", "value": value }
+}
+
+fn createBlockStatement(statements: []) {
+  return { "type": "blockStatement", "statements": statements }
+}
+
+# Expression 노드들
+fn createBinaryOp(left: {}, operator: string, right: {}) {
+  return { "type": "binaryOp", "left": left, "operator": operator, "right": right }
+}
+
+fn createUnaryOp(operator: string, operand: {}) {
+  return { "type": "unaryOp", "operator": operator, "operand": operand }
+}
+
+fn createCallExpression(callee: {}, args: []) {
+  return { "type": "call", "callee": callee, "arguments": args }
+}
+
+fn createIdentifier(name: string) {
+  return { "type": "identifier", "name": name }
+}
+
+fn createLiteral(value: {}, literalType: string) {
+  return { "type": "literal", "value": value, "literalType": literalType }
+}
+
+fn createArrayLiteral(elements: []) {
+  return { "type": "arrayLiteral", "elements": elements }
+}
+
+fn createArrayAccess(array: {}, index: {}) {
+  return { "type": "arrayAccess", "array": array, "index": index }
+}
+
+fn createArrayAssignment(array: {}, index: {}, value: {}) {
+  return { "type": "arrayAssignment", "array": array, "index": index, "value": value }
+}
+
+# ================================================================
+# Parser 상태 관리
+# ================================================================
+
+fn createParserState(tokens: []) {
+  return {
+    "tokens": tokens,
+    "position": 0
+  }
+}
+
+# 현재 토큰 접근
+fn currentToken(state: {}) {
+  if state["position"] < len(state["tokens"]) {
+    return state["tokens"][state["position"]]
+  }
+  return { "type": "eof", "value": "" }
+}
+
+# 다음 토큰 미리보기
+fn peekToken(state: {}, offset: int) {
+  pos = state["position"] + offset
+  if pos < len(state["tokens"]) {
+    return state["tokens"][pos]
+  }
+  return { "type": "eof", "value": "" }
+}
+
+# 토큰 이동
+fn advance(state: {}) {
+  state["position"] = state["position"] + 1
+  return state
+}
+
+# 토큰 매칭
+fn match(state: {}, expectedType: string, expectedValue: string) {
+  token = currentToken(state)
+  if token["type"] == expectedType and (expectedValue == "" or token["value"] == expectedValue) {
+    state = advance(state)
+    return { "matched": true, "state": state, "token": token }
+  }
+  return { "matched": false, "state": state, "token": null }
+}
+
+# ================================================================
+# Parse 진입점 (메인 함수)
+# ================================================================
+
+fn parse(tokens: []) {
+  state = createParserState(tokens)
+  statements = []
+
+  # 메인 루프: EOF까지 문장 파싱
+  while currentToken(state)["type"] != "eof" {
+    # 빈 줄 건너뛰기
+    if currentToken(state)["type"] == "newline" {
+      state = advance(state)
+    }
+    else {
+      stmt = parseStatement(state)
+      if stmt != null {
+        statements = statements + [stmt]
+      }
+      state = stmt["_state"]
+    }
+  }
+
+  return statements
+}
+
+# ================================================================
+# Statement 파싱
+# ================================================================
+
+fn parseStatement(state: {}) {
+  token = currentToken(state)
+
+  # 함수 정의
+  if token["type"] == "keyword" and token["value"] == "fn" {
+    return parseFunctionDefinition(state)
+  }
+  # if 문
+  else if token["type"] == "keyword" and token["value"] == "if" {
+    return parseIfStatement(state)
+  }
+  # while 루프
+  else if token["type"] == "keyword" and token["value"] == "while" {
+    return parseWhileStatement(state)
+  }
+  # return 문
+  else if token["type"] == "keyword" and token["value"] == "return" {
+    return parseReturnStatement(state)
+  }
+  # 블록
+  else if token["type"] == "lbrace" {
+    return parseBlockStatement(state)
+  }
+  # 식 문장
+  else {
+    return parseExpressionStatement(state)
+  }
+}
+
+# 식 문장
+fn parseExpressionStatement(state: {}) {
+  expr = parseExpression(state)
+  state = expr["_state"]
+
+  # 세미콜론 또는 줄바꿈 선택적
+  if currentToken(state)["type"] == "semicolon" {
+    state = advance(state)
+  }
+  else if currentToken(state)["type"] == "newline" {
+    state = advance(state)
+  }
+
+  return { "_state": state, "result": expr }
+}
+
+# 함수 정의
+fn parseFunctionDefinition(state: {}) {
+  # fn 키워드 건너뛰기
+  state = advance(state)
+
+  # 함수 이름
+  nameToken = currentToken(state)
+  if nameToken["type"] != "identifier" {
+    print("Expected identifier after 'fn'")
+    return { "_state": state, "result": null }
+  }
+  funcName = nameToken["value"]
+  state = advance(state)
+
+  # 매개변수 목록
+  params = []
+  if currentToken(state)["type"] == "lparen" {
+    state = advance(state)
+
+    while currentToken(state)["type"] != "rparen" {
+      paramToken = currentToken(state)
+      if paramToken["type"] == "identifier" {
+        params = params + [paramToken["value"]]
+        state = advance(state)
+
+        # 타입 주석 건너뛰기 (optional)
+        if currentToken(state)["type"] == "colon" {
+          state = advance(state)
+          # 타입 정보 무시
+          state = advance(state)
+        }
+
+        # 쉼표
+        if currentToken(state)["type"] == "comma" {
+          state = advance(state)
+        }
+      }
+      else {
+        print("Expected parameter name")
+        state = advance(state)
+      }
+    }
+
+    state = advance(state)  # rparen
+  }
+
+  # 함수 본문
+  body = []
+  if currentToken(state)["type"] == "lbrace" {
+    blockStmt = parseBlockStatement(state)
+    state = blockStmt["_state"]
+    body = blockStmt["result"]["statements"]
+  }
+
+  funcDef = createFunctionDefinition(funcName, params, body)
+  return { "_state": state, "result": funcDef }
+}
+
+# if 문
+fn parseIfStatement(state: {}) {
+  # if 키워드 건너뛰기
+  state = advance(state)
+
+  # 조건
+  condition = parseExpression(state)
+  state = condition["_state"]
+
+  # then 블록
+  thenBlock = parseBlockStatement(state)
+  state = thenBlock["_state"]
+  thenBranch = thenBlock["result"]["statements"]
+
+  # else 블록 (optional)
+  elseBranch = []
+  if currentToken(state)["type"] == "keyword" and currentToken(state)["value"] == "else" {
+    state = advance(state)
+
+    elseBlock = parseBlockStatement(state)
+    state = elseBlock["_state"]
+    elseBranch = elseBlock["result"]["statements"]
+  }
+
+  ifStmt = createIfStatement(condition, thenBranch, elseBranch)
+  return { "_state": state, "result": ifStmt }
+}
+
+# while 루프
+fn parseWhileStatement(state: {}) {
+  # while 키워드 건너뛰기
+  state = advance(state)
+
+  # 조건
+  condition = parseExpression(state)
+  state = condition["_state"]
+
+  # 루프 본문
+  body = []
+  if currentToken(state)["type"] == "lbrace" {
+    blockStmt = parseBlockStatement(state)
+    state = blockStmt["_state"]
+    body = blockStmt["result"]["statements"]
+  }
+
+  whileStmt = createWhileStatement(condition, body)
+  return { "_state": state, "result": whileStmt }
+}
+
+# return 문
+fn parseReturnStatement(state: {}) {
+  # return 키워드 건너뛰기
+  state = advance(state)
+
+  # 반환값 (optional)
+  value = null
+  if currentToken(state)["type"] != "newline" and currentToken(state)["type"] != "eof" {
+    exprResult = parseExpression(state)
+    state = exprResult["_state"]
+    value = exprResult
+  }
+
+  retStmt = createReturnStatement(value)
+  return { "_state": state, "result": retStmt }
+}
+
+# 블록 문
+fn parseBlockStatement(state: {}) {
+  if currentToken(state)["type"] != "lbrace" {
+    print("Expected '{'")
+    return { "_state": state, "result": { "type": "blockStatement", "statements": [] } }
+  }
+
+  state = advance(state)  # lbrace
+  statements = []
+
+  while currentToken(state)["type"] != "rbrace" and currentToken(state)["type"] != "eof" {
+    if currentToken(state)["type"] == "newline" {
+      state = advance(state)
+    }
+    else {
+      stmt = parseStatement(state)
+      if stmt != null {
+        statements = statements + [stmt["result"]]
+      }
+      state = stmt["_state"]
+    }
+  }
+
+  if currentToken(state)["type"] == "rbrace" {
+    state = advance(state)
+  }
+
+  blockStmt = createBlockStatement(statements)
+  return { "_state": state, "result": blockStmt }
+}
+
+# ================================================================
+# Expression 파싱 (우선순위 기반)
+# ================================================================
+
+# 최상위 (낮은 우선순위)
+fn parseExpression(state: {}) {
+  return parseAssignment(state)
+}
+
+# 할당 (= 연산자)
+fn parseAssignment(state: {}) {
+  expr = parseOr(state)
+  state = expr["_state"]
+
+  if currentToken(state)["type"] == "equals" {
+    state = advance(state)
+
+    # 좌변이 identifier 또는 arrayAccess
+    if expr["type"] == "identifier" {
+      value = parseAssignment(state)
+      state = value["_state"]
+
+      assignment = createAssignment(expr["name"], value)
+      return { "_state": state, "result": assignment }
+    }
+    else if expr["type"] == "arrayAccess" {
+      value = parseAssignment(state)
+      state = value["_state"]
+
+      assignment = createArrayAssignment(expr["array"], expr["index"], value)
+      return { "_state": state, "result": assignment }
+    }
+  }
+
+  return { "_state": state, "result": expr }
+}
+
+# OR 연산자 (||)
+fn parseOr(state: {}) {
+  left = parseAnd(state)
+  state = left["_state"]
+
+  while currentToken(state)["type"] == "operator" and currentToken(state)["value"] == "||" {
+    state = advance(state)
+    right = parseAnd(state)
+    state = right["_state"]
+
+    left = createBinaryOp(left, "||", right)
+  }
+
+  return { "_state": state, "result": left }
+}
+
+# AND 연산자 (&&)
+fn parseAnd(state: {}) {
+  left = parseEquality(state)
+  state = left["_state"]
+
+  while currentToken(state)["type"] == "operator" and currentToken(state)["value"] == "&&" {
+    state = advance(state)
+    right = parseEquality(state)
+    state = right["_state"]
+
+    left = createBinaryOp(left, "&&", right)
+  }
+
+  return { "_state": state, "result": left }
+}
+
+# 동등성 (==, !=)
+fn parseEquality(state: {}) {
+  left = parseComparison(state)
+  state = left["_state"]
+
+  while currentToken(state)["type"] == "operator" and
+        (currentToken(state)["value"] == "==" or currentToken(state)["value"] == "!=") {
+    op = currentToken(state)["value"]
+    state = advance(state)
+
+    right = parseComparison(state)
+    state = right["_state"]
+
+    left = createBinaryOp(left, op, right)
+  }
+
+  return { "_state": state, "result": left }
+}
+
+# 비교 (<, <=, >, >=)
+fn parseComparison(state: {}) {
+  left = parseAddition(state)
+  state = left["_state"]
+
+  while currentToken(state)["type"] == "operator" and
+        (currentToken(state)["value"] == "<" or
+         currentToken(state)["value"] == "<=" or
+         currentToken(state)["value"] == ">" or
+         currentToken(state)["value"] == ">=") {
+    op = currentToken(state)["value"]
+    state = advance(state)
+
+    right = parseAddition(state)
+    state = right["_state"]
+
+    left = createBinaryOp(left, op, right)
+  }
+
+  return { "_state": state, "result": left }
+}
+
+# 덧셈 (+, -)
+fn parseAddition(state: {}) {
+  left = parseMultiplication(state)
+  state = left["_state"]
+
+  while currentToken(state)["type"] == "operator" and
+        (currentToken(state)["value"] == "+" or currentToken(state)["value"] == "-") {
+    op = currentToken(state)["value"]
+    state = advance(state)
+
+    right = parseMultiplication(state)
+    state = right["_state"]
+
+    left = createBinaryOp(left, op, right)
+  }
+
+  return { "_state": state, "result": left }
+}
+
+# 곱셈 (*, /, %)
+fn parseMultiplication(state: {}) {
+  left = parseUnary(state)
+  state = left["_state"]
+
+  while currentToken(state)["type"] == "operator" and
+        (currentToken(state)["value"] == "*" or
+         currentToken(state)["value"] == "/" or
+         currentToken(state)["value"] == "%") {
+    op = currentToken(state)["value"]
+    state = advance(state)
+
+    right = parseUnary(state)
+    state = right["_state"]
+
+    left = createBinaryOp(left, op, right)
+  }
+
+  return { "_state": state, "result": left }
+}
+
+# 단항 연산 (-, !, &, &mut)
+fn parseUnary(state: {}) {
+  if currentToken(state)["type"] == "operator" and
+     (currentToken(state)["value"] == "-" or
+      currentToken(state)["value"] == "!" or
+      currentToken(state)["value"] == "&") {
+    op = currentToken(state)["value"]
+    state = advance(state)
+
+    # &mut 처리
+    if op == "&" and currentToken(state)["type"] == "keyword" and currentToken(state)["value"] == "mut" {
+      state = advance(state)
+      op = "&mut"
+    }
+
+    operand = parseUnary(state)
+    state = operand["_state"]
+
+    unary = createUnaryOp(op, operand)
+    return { "_state": state, "result": unary }
+  }
+
+  return parseCall(state)
+}
+
+# 함수 호출 (())
+fn parseCall(state: {}) {
+  expr = parsePrimary(state)
+  state = expr["_state"]
+
+  while true {
+    if currentToken(state)["type"] == "lparen" {
+      # 함수 호출
+      state = advance(state)
+      args = []
+
+      while currentToken(state)["type"] != "rparen" {
+        arg = parseExpression(state)
+        state = arg["_state"]
+        args = args + [arg]
+
+        if currentToken(state)["type"] == "comma" {
+          state = advance(state)
+        }
+      }
+
+      state = advance(state)  # rparen
+      expr = createCallExpression(expr, args)
+    }
+    else if currentToken(state)["type"] == "lbracket" {
+      # 배열 접근 ([])
+      state = advance(state)
+      index = parseExpression(state)
+      state = index["_state"]
+
+      if currentToken(state)["type"] == "rbracket" {
+        state = advance(state)
+      }
+
+      expr = createArrayAccess(expr, index)
+    }
+    else {
+      break
+    }
+  }
+
+  return { "_state": state, "result": expr }
+}
+
+# 기본 표현식
+fn parsePrimary(state: {}) {
+  token = currentToken(state)
+
+  # 숫자
+  if token["type"] == "number" {
+    state = advance(state)
+    return { "_state": state, "result": createLiteral(token["value"], "number") }
+  }
+  # 문자열
+  else if token["type"] == "string" {
+    state = advance(state)
+    return { "_state": state, "result": createLiteral(token["value"], "string") }
+  }
+  # true, false
+  else if token["type"] == "keyword" and (token["value"] == "true" or token["value"] == "false") {
+    state = advance(state)
+    return { "_state": state, "result": createLiteral(token["value"], "boolean") }
+  }
+  # null
+  else if token["type"] == "keyword" and token["value"] == "null" {
+    state = advance(state)
+    return { "_state": state, "result": createLiteral(null, "null") }
+  }
+  # 배열 리터럴 ([])
+  else if token["type"] == "lbracket" {
+    state = advance(state)
+    elements = []
+
+    while currentToken(state)["type"] != "rbracket" {
+      elem = parseExpression(state)
+      state = elem["_state"]
+      elements = elements + [elem]
+
+      if currentToken(state)["type"] == "comma" {
+        state = advance(state)
+      }
+    }
+
+    state = advance(state)  # rbracket
+    return { "_state": state, "result": createArrayLiteral(elements) }
+  }
+  # 괄호 표현식
+  else if token["type"] == "lparen" {
+    state = advance(state)
+    expr = parseExpression(state)
+    state = expr["_state"]
+
+    if currentToken(state)["type"] == "rparen" {
+      state = advance(state)
+    }
+
+    return { "_state": state, "result": expr }
+  }
+  # 식별자
+  else if token["type"] == "identifier" {
+    state = advance(state)
+    return { "_state": state, "result": createIdentifier(token["value"]) }
+  }
+  else {
+    print("Unexpected token: " + token["type"])
+    return { "_state": state, "result": null }
+  }
+}
+
+# ================================================================
+# 테스트 (주석 처리 가능)
+# ================================================================
+
+fn testParser() {
+  print("Parser skeleton ready for Week 2 implementation")
+}
+
+# testParser()

@@ -1,0 +1,8 @@
+fn sum_to(n)
+  result = 0
+  for i in 0..n
+    result = result + i
+  return result
+
+print(sum_to(5))
+print(sum_to(10))

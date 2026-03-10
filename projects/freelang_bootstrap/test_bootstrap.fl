@@ -1,0 +1,75 @@
+# 부트스트랩 인터프리터 테스트
+# FreeLang 코드로 작성된 테스트
+
+# Test 1: 기본 연산
+print("=== Test 1: 기본 연산 ===")
+print(1 + 2)
+print(10 - 3)
+print(4 * 5)
+print(20 / 4)
+print(17 % 5)
+
+# Test 2: 문자열
+print("=== Test 2: 문자열 ===")
+print("Hello, ")
+print("FreeLang!")
+print("문자열 길이: ")
+print(len("Hello"))
+
+# Test 3: 함수
+print("=== Test 3: 함수 ===")
+fn add(a, b)
+  return a + b
+
+fn multiply(x, y)
+  return x * y
+
+print("add(5, 3) = ")
+print(add(5, 3))
+print("multiply(4, 6) = ")
+print(multiply(4, 6))
+
+# Test 4: 조건문
+print("=== Test 4: 조건문 ===")
+fn is_positive(n)
+  if n > 0
+    return 1
+  else
+    return 0
+
+print("is_positive(10) = ")
+print(is_positive(10))
+print("is_positive(-5) = ")
+print(is_positive(-5))
+
+# Test 5: 반복문
+print("=== Test 5: 반복문 ===")
+fn sum_range(n)
+  result = 0
+  for i in 0..n
+    result = result + i
+  return result
+
+print("sum_range(5) = ")
+print(sum_range(5))
+print("sum_range(10) = ")
+print(sum_range(10))
+
+# Test 6: 배열
+print("=== Test 6: 배열 ===")
+arr = [1, 2, 3]
+print("배열: ")
+print(arr)
+print("배열 길이: ")
+print(len(arr))
+
+# Test 7: 논리 연산
+print("=== Test 7: 논리 연산 ===")
+print("5 > 3 = ")
+print(5 > 3)
+print("10 == 10 = ")
+print(10 == 10)
+print("5 != 3 = ")
+print(5 != 3)
+
+print("=== 모든 테스트 완료! ===")

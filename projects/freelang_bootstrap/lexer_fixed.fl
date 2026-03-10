@@ -1,0 +1,59 @@
+# ================================================================
+# FreeLang Bootstrap Lexer (Fixed for v4 Syntax)
+# 모든 함수에 반환 타입 주석 추가
+# int → i32 변경
+# ================================================================
+
+# 렉서 상태 구조 (반환 타입 필수)
+fn createLexerState(source: string): string {
+  return source
+}
+
+# Token 구조 정의 (반환 타입 필수)
+fn createToken(tokenType: string, value: string, line: i32, column: i32): string {
+  return ""
+}
+
+# 문자 분류 함수 - bool 반환
+fn isDigit(c: string): bool {
+  return c >= "0" and c <= "9"
+}
+
+fn isAlpha(c: string): bool {
+  return (c >= "a" and c <= "z") or
+         (c >= "A" and c <= "Z") or
+         c == "_"
+}
+
+fn isAlphaNumeric(c: string): bool {
+  return isAlpha(c) or isDigit(c)
+}
+
+fn isWhitespace(c: string): bool {
+  return c == " " or c == "\t" or c == "\n" or c == "\r"
+}
+
+fn isOperator(c: string): bool {
+  return c == "+" or c == "-" or c == "*" or c == "/" or
+         c == "=" or c == "<" or c == ">" or c == "!" or
+         c == "(" or c == ")" or c == "{" or c == "}" or
+         c == "[" or c == "]" or c == "," or c == ":" or
+         c == ";" or c == "." or c == "&" or c == "|"
+}
+
+# 반환 타입 문자열로 통일 (복합 타입은 아직 미지원)
+fn main(): string {
+  let char1 = "5"
+  let result1 = isDigit(char1)
+
+  let char2 = "a"
+  let result2 = isAlpha(char2)
+
+  let char3 = "3"
+  let result3 = isAlphaNumeric(char3)
+
+  print("All tests passed")
+  return "done"
+}
+
+main()

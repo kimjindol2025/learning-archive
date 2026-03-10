@@ -1,0 +1,36 @@
+# 간단한 계산기
+
+fn add(a, b) {
+  return a + b
+}
+
+fn subtract(a, b) {
+  return a - b
+}
+
+fn multiply(a, b) {
+  return a * b
+}
+
+fn divide(a, b) {
+  return a / b
+}
+
+# 계산
+x = 10
+y = 3
+
+print("덧셈: ")
+print(add(x, y))
+
+print("뺄셈: ")
+print(subtract(x, y))
+
+print("곱셈: ")
+print(multiply(x, y))
+
+print("나눗셈: ")
+print(divide(x, y))
+
+print("나머지: ")
+print(x % y)

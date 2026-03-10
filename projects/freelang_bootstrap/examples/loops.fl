@@ -1,0 +1,22 @@
+# FreeLang Bootstrap - 루프 예제
+
+# while 루프
+print("=== while 루프 ===")
+i = 0
+while (i < 3) {
+  print(i)
+  i = i + 1
+}
+
+# for 루프
+print("=== for 루프 ===")
+for (j = 0; j < 5; j = j + 1) {
+  print(j)
+}
+
+# 구구단
+print("=== 2단 ===")
+for (k = 1; k <= 9; k = k + 1) {
+  result = 2 * k
+  print(result)
+}

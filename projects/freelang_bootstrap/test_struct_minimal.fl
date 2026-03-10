@@ -1,0 +1,10 @@
+fn createToken(tokenType: string, value: string) {
+  return { type: tokenType, value: value }
+}
+
+fn main() {
+  let tok = createToken("IDENT", "hello")
+  print(tok)
+}
+
+main()

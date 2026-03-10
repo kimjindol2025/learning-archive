@@ -1,0 +1,16 @@
+fn createToken(tokenType: string, value: string, line: int, column: int) {
+  return {
+    "type": tokenType,
+    "value": value,
+    "line": line,
+    "column": column
+  }
+}
+
+fn testToken() {
+  let tok1 = createToken("IDENT", "hello", 1, 0)
+  print("Token created: ")
+  print(tok1)
+}
+
+testToken()

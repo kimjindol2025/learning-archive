@@ -1,0 +1,388 @@
+# ================================================================
+# FreeLang Bootstrap Lexer (Week 1, Phase B-4)
+# TypeScript lexer.ts → FreeLang lexer.fl 변환
+# 소스 코드 → 토큰 변환
+#
+# 설계 철학:
+# - 렉서 상태를 구조체로 명시적 관리 (함수형)
+# - 모든 함수는 상태와 소스를 입력받아 새로운 상태 반환
+# - 부작용 제거 → 테스트 용이
+# ================================================================
+
+# 렉서 상태 구조
+fn createLexerState(source: string) {
+  return {
+    "source": source,
+    "position": 0,
+    "line": 1,
+    "column": 1,
+    "tokens": []
+  }
+}
+
+# Token 구조 정의
+fn createToken(tokenType: string, value: string, line: int, column: int) {
+  return {
+    "type": tokenType,
+    "value": value,
+    "line": line,
+    "column": column
+  }
+}
+
+# 문자 분류 함수
+fn isDigit(c: string) {
+  return c >= "0" and c <= "9"
+}
+
+fn isAlpha(c: string) {
+  return (c >= "a" and c <= "z") or
+         (c >= "A" and c <= "Z") or
+         c == "_"
+}
+
+fn isAlphaNumeric(c: string) {
+  return isAlpha(c) or isDigit(c)
+}
+
+fn isOperator(c: string) {
+  return c == "+" or c == "-" or c == "*" or c == "/" or
+         c == "%" or c == "=" or c == "<" or c == ">" or
+         c == "!" or c == "&" or c == "|"
+}
+
+fn isWhitespace(c: string) {
+  return c == " " or c == "\t" or c == "\r"
+}
+
+# 렉서 메인 함수 (상태 기반)
+fn tokenize(source: string) {
+  state = createLexerState(source)
+
+  # 메인 루프
+  while state["position"] < len(source) {
+    # 공백과 주석 건너뛰기
+    state = skipWhitespaceAndComments(state)
+
+    if state["position"] >= len(source) {
+      break
+    }
+
+    currentChar = state["source"][state["position"]]
+
+    # 숫자
+    if isDigit(currentChar) {
+      state = readNumber(state)
+    }
+    # 문자열
+    else if currentChar == "\"" or currentChar == "'" {
+      state = readString(state, currentChar)
+    }
+    # 식별자 또는 키워드
+    else if isAlpha(currentChar) {
+      state = readIdentifierOrKeyword(state)
+    }
+    # 연산자 및 기호
+    else if isOperator(currentChar) {
+      state = readOperator(state)
+    }
+    # 괄호
+    else if currentChar == "(" {
+      state = addTokenState(state, "lparen", "(")
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    else if currentChar == ")" {
+      state = addTokenState(state, "rparen", ")")
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    else if currentChar == "{" {
+      state = addTokenState(state, "lbrace", "{")
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    else if currentChar == "}" {
+      state = addTokenState(state, "rbrace", "}")
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    else if currentChar == "[" {
+      state = addTokenState(state, "lbracket", "[")
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    else if currentChar == "]" {
+      state = addTokenState(state, "rbracket", "]")
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    # 구분자
+    else if currentChar == "," {
+      state = addTokenState(state, "comma", ",")
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    else if currentChar == ";" {
+      state = addTokenState(state, "semicolon", ";")
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    else if currentChar == ":" {
+      state = addTokenState(state, "colon", ":")
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    else if currentChar == "." {
+      state = addTokenState(state, "dot", ".")
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    else if currentChar == "\n" {
+      state = addTokenState(state, "newline", "\n")
+      state["position"] = state["position"] + 1
+      state["line"] = state["line"] + 1
+      state["column"] = 1
+    }
+    else {
+      # 알 수 없는 문자
+      print("Unknown character: " + currentChar)
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+  }
+
+  # EOF 토큰
+  state = addTokenState(state, "eof", "")
+
+  return state["tokens"]
+}
+
+# 공백과 주석 건너뛰기
+fn skipWhitespaceAndComments(state: {}) {
+  while state["position"] < len(state["source"]) {
+    c = state["source"][state["position"]]
+
+    # 공백 건너뛰기
+    if c == " " or c == "\t" or c == "\r" {
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    # 주석 건너뛰기 (#)
+    else if c == "#" {
+      while state["position"] < len(state["source"]) and state["source"][state["position"]] != "\n" {
+        state["position"] = state["position"] + 1
+      }
+    }
+    else {
+      break
+    }
+  }
+
+  return state
+}
+
+# 숫자 읽기
+fn readNumber(state: {}) {
+  startCol = state["column"]
+  value = ""
+
+  while state["position"] < len(state["source"]) {
+    c = state["source"][state["position"]]
+
+    if isDigit(c) or c == "." {
+      value = value + c
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+    else {
+      break
+    }
+  }
+
+  state = addTokenState(state, "number", value)
+  return state
+}
+
+# 문자열 읽기
+fn readString(state: {}, quote: string) {
+  startCol = state["column"]
+  state["position"] = state["position"] + 1  # 시작 따옴표 건너뛰기
+  state["column"] = state["column"] + 1
+
+  value = ""
+
+  while state["position"] < len(state["source"]) and state["source"][state["position"]] != quote {
+    c = state["source"][state["position"]]
+
+    if c == "\\" {
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+
+      if state["position"] < len(state["source"]) {
+        escaped = state["source"][state["position"]]
+
+        if escaped == "n" {
+          value = value + "\n"
+        }
+        else if escaped == "t" {
+          value = value + "\t"
+        }
+        else if escaped == "r" {
+          value = value + "\r"
+        }
+        else if escaped == "\\" {
+          value = value + "\\"
+        }
+        else if escaped == "\"" {
+          value = value + "\""
+        }
+        else if escaped == "'" {
+          value = value + "'"
+        }
+        else {
+          value = value + escaped
+        }
+
+        state["position"] = state["position"] + 1
+        state["column"] = state["column"] + 1
+      }
+    }
+    else {
+      value = value + c
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+
+      if c == "\n" {
+        state["line"] = state["line"] + 1
+        state["column"] = 1
+      }
+    }
+  }
+
+  if state["position"] >= len(state["source"]) {
+    print("Unterminated string")
+    return state
+  }
+
+  state["position"] = state["position"] + 1  # 끝 따옴표 건너뛰기
+  state["column"] = state["column"] + 1
+
+  state = addTokenState(state, "string", value)
+  return state
+}
+
+# 식별자 또는 키워드 읽기
+fn readIdentifierOrKeyword(state: {}) {
+  startCol = state["column"]
+  value = ""
+
+  while state["position"] < len(state["source"]) and isAlphaNumeric(state["source"][state["position"]]) {
+    value = value + state["source"][state["position"]]
+    state["position"] = state["position"] + 1
+    state["column"] = state["column"] + 1
+  }
+
+  # 키워드 목록
+  keywords = ["fn", "if", "else", "while", "for", "return", "let", "mut",
+              "true", "false", "null"]
+
+  tokenType = "identifier"
+
+  # 키워드 확인
+  i = 0
+  while i < len(keywords) {
+    if keywords[i] == value {
+      tokenType = "keyword"
+      break
+    }
+    i = i + 1
+  }
+
+  state = addTokenState(state, tokenType, value)
+  return state
+}
+
+# 연산자 읽기
+fn readOperator(state: {}) {
+  startCol = state["column"]
+  value = state["source"][state["position"]]
+  state["position"] = state["position"] + 1
+  state["column"] = state["column"] + 1
+
+  # 2자 연산자 확인
+  if state["position"] < len(state["source"]) {
+    next = state["source"][state["position"]]
+
+    # 2자 연산자들
+    if (value == "=" and next == "=") or
+       (value == "!" and next == "=") or
+       (value == "<" and next == "=") or
+       (value == ">" and next == "=") or
+       (value == "&" and next == "&") or
+       (value == "|" and next == "|") or
+       (value == "-" and next == ">") {
+      value = value + next
+      state["position"] = state["position"] + 1
+      state["column"] = state["column"] + 1
+    }
+  }
+
+  # 특수 연산자 처리
+  if value == "=" {
+    state = addTokenState(state, "equals", value)
+  }
+  else if value == "->" {
+    state = addTokenState(state, "arrow", value)
+  }
+  else {
+    state = addTokenState(state, "operator", value)
+  }
+
+  return state
+}
+
+# 토큰 추가 헬퍼
+fn addTokenState(state: {}, tokenType: string, value: string) {
+  token = createToken(tokenType, value, state["line"], state["column"])
+  state["tokens"] = state["tokens"] + [token]
+  return state
+}
+
+# ================================================================
+# 테스트 및 검증
+# ================================================================
+
+# 간단한 렉서 테스트
+fn testLexer() {
+  # 테스트 코드
+  testCases = [
+    "x = 42",
+    "print(x)",
+    "fn add(a, b) { return a + b }",
+    "if true { x = 1 }",
+    "str = \"hello\""
+  ]
+
+  i = 0
+  while i < len(testCases) {
+    code = testCases[i]
+    print("=" * 50)
+    print("Input: " + code)
+    print("-" * 50)
+
+    result = tokenize(code)
+
+    j = 0
+    while j < len(result) {
+      token = result[j]
+      print("  " + token["type"] + ": " + token["value"])
+      j = j + 1
+    }
+
+    i = i + 1
+  }
+}
+
+# 간단한 테스트 실행 (주석 처리 가능)
+# testLexer()

@@ -1,0 +1,115 @@
+fn isDigit(c: string): bool {
+  return c >= "0" && c <= "9"
+}
+
+fn isAlpha(c: string): bool {
+  return (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c == "_"
+}
+
+fn isAlphaNumeric(c: string): bool {
+  return isAlpha(c) || isDigit(c)
+}
+
+fn isOperator(c: string): bool {
+  return c == "+" || c == "-" || c == "*" || c == "/" || c == "%" || c == "=" || c == "<" || c == ">" || c == "!" || c == "&" || c == "|"
+}
+
+fn isWhitespace(c: string): bool {
+  return c == " " || c == "\t" || c == "\r"
+}
+
+fn testIsDigit(): bool {
+  print("=== Testing isDigit ===")
+  if isDigit("0") { print("PASS: isDigit(0)") } else { print("FAIL: isDigit(0)") }
+  if isDigit("5") { print("PASS: isDigit(5)") } else { print("FAIL: isDigit(5)") }
+  if isDigit("9") { print("PASS: isDigit(9)") } else { print("FAIL: isDigit(9)") }
+  if !isDigit("a") { print("PASS: !isDigit(a)") } else { print("FAIL: !isDigit(a)") }
+  if !isDigit("-") { print("PASS: !isDigit(-)") } else { print("FAIL: !isDigit(-)") }
+  if !isDigit(" ") { print("PASS: !isDigit( )") } else { print("FAIL: !isDigit( )") }
+  if !isDigit("_") { print("PASS: !isDigit(_)") } else { print("FAIL: !isDigit(_)") }
+  print("SUCCESS: isDigit tests completed")
+  return true
+}
+
+fn testIsAlpha(): bool {
+  print("=== Testing isAlpha ===")
+  if isAlpha("a") { print("PASS: isAlpha(a)") } else { print("FAIL: isAlpha(a)") }
+  if isAlpha("z") { print("PASS: isAlpha(z)") } else { print("FAIL: isAlpha(z)") }
+  if isAlpha("A") { print("PASS: isAlpha(A)") } else { print("FAIL: isAlpha(A)") }
+  if isAlpha("Z") { print("PASS: isAlpha(Z)") } else { print("FAIL: isAlpha(Z)") }
+  if isAlpha("_") { print("PASS: isAlpha(_)") } else { print("FAIL: isAlpha(_)") }
+  if !isAlpha("0") { print("PASS: !isAlpha(0)") } else { print("FAIL: !isAlpha(0)") }
+  if !isAlpha(" ") { print("PASS: !isAlpha( )") } else { print("FAIL: !isAlpha( )") }
+  if !isAlpha("+") { print("PASS: !isAlpha(+)") } else { print("FAIL: !isAlpha(+)") }
+  print("SUCCESS: isAlpha tests completed")
+  return true
+}
+
+fn testIsAlphaNumeric(): bool {
+  print("=== Testing isAlphaNumeric ===")
+  if isAlphaNumeric("a") { print("PASS: isAlphaNumeric(a)") } else { print("FAIL: isAlphaNumeric(a)") }
+  if isAlphaNumeric("Z") { print("PASS: isAlphaNumeric(Z)") } else { print("FAIL: isAlphaNumeric(Z)") }
+  if isAlphaNumeric("_") { print("PASS: isAlphaNumeric(_)") } else { print("FAIL: isAlphaNumeric(_)") }
+  if isAlphaNumeric("0") { print("PASS: isAlphaNumeric(0)") } else { print("FAIL: isAlphaNumeric(0)") }
+  if isAlphaNumeric("9") { print("PASS: isAlphaNumeric(9)") } else { print("FAIL: isAlphaNumeric(9)") }
+  if !isAlphaNumeric(" ") { print("PASS: !isAlphaNumeric( )") } else { print("FAIL: !isAlphaNumeric( )") }
+  if !isAlphaNumeric("+") { print("PASS: !isAlphaNumeric(+)") } else { print("FAIL: !isAlphaNumeric(+)") }
+  print("SUCCESS: isAlphaNumeric tests completed")
+  return true
+}
+
+fn testIsOperator(): bool {
+  print("=== Testing isOperator ===")
+  if isOperator("+") { print("PASS: isOperator(+)") } else { print("FAIL: isOperator(+)") }
+  if isOperator("-") { print("PASS: isOperator(-)") } else { print("FAIL: isOperator(-)") }
+  if isOperator("*") { print("PASS: isOperator(*)") } else { print("FAIL: isOperator(*)") }
+  if isOperator("/") { print("PASS: isOperator(/)") } else { print("FAIL: isOperator(/)") }
+  if isOperator("%") { print("PASS: isOperator(%)") } else { print("FAIL: isOperator(%)") }
+  if isOperator("=") { print("PASS: isOperator(=)") } else { print("FAIL: isOperator(=)") }
+  if isOperator("<") { print("PASS: isOperator(<)") } else { print("FAIL: isOperator(<)") }
+  if isOperator(">") { print("PASS: isOperator(>)") } else { print("FAIL: isOperator(>)") }
+  if isOperator("!") { print("PASS: isOperator(!)") } else { print("FAIL: isOperator(!)") }
+  if isOperator("&") { print("PASS: isOperator(&)") } else { print("FAIL: isOperator(&)") }
+  if isOperator("|") { print("PASS: isOperator(|)") } else { print("FAIL: isOperator(|)") }
+  if !isOperator("a") { print("PASS: !isOperator(a)") } else { print("FAIL: !isOperator(a)") }
+  if !isOperator("0") { print("PASS: !isOperator(0)") } else { print("FAIL: !isOperator(0)") }
+  if !isOperator(" ") { print("PASS: !isOperator( )") } else { print("FAIL: !isOperator( )") }
+  print("SUCCESS: isOperator tests completed")
+  return true
+}
+
+fn testIsWhitespace(): bool {
+  print("=== Testing isWhitespace ===")
+  if isWhitespace(" ") { print("PASS: isWhitespace(space)") } else { print("FAIL: isWhitespace(space)") }
+  if isWhitespace("\t") { print("PASS: isWhitespace(tab)") } else { print("FAIL: isWhitespace(tab)") }
+  if isWhitespace("\r") { print("PASS: isWhitespace(cr)") } else { print("FAIL: isWhitespace(cr)") }
+  if !isWhitespace("a") { print("PASS: !isWhitespace(a)") } else { print("FAIL: !isWhitespace(a)") }
+  if !isWhitespace("0") { print("PASS: !isWhitespace(0)") } else { print("FAIL: !isWhitespace(0)") }
+  if !isWhitespace("+") { print("PASS: !isWhitespace(+)") } else { print("FAIL: !isWhitespace(+)") }
+  if !isWhitespace("\n") { print("PASS: !isWhitespace(newline)") } else { print("FAIL: !isWhitespace(newline)") }
+  print("SUCCESS: isWhitespace tests completed")
+  return true
+}
+
+fn runAllTests(): bool {
+  print("====================================")
+  print("Step 2.1 Track C: Utility Functions")
+  print("====================================")
+  print("")
+  testIsDigit()
+  print("")
+  testIsAlpha()
+  print("")
+  testIsAlphaNumeric()
+  print("")
+  testIsOperator()
+  print("")
+  testIsWhitespace()
+  print("")
+  print("====================================")
+  print("FINAL: All tests executed")
+  print("====================================")
+  return true
+}
+
+runAllTests()

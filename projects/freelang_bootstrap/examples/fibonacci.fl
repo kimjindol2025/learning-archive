@@ -1,0 +1,17 @@
+# 피보나치 수열
+
+fn fib(n) {
+  if (n <= 1) {
+    return n
+  } else {
+    return fib(n - 1) + fib(n - 2)
+  }
+}
+
+# 첫 10개 피보나치 수
+print("피보나치 수열:")
+i = 0
+while (i < 10) {
+  print(fib(i))
+  i = i + 1
+}

@@ -1,0 +1,5 @@
+fn isDigit(c: string): bool {
+  return c >= "0" && c <= "9"
+}
+
+print(isDigit("5"))

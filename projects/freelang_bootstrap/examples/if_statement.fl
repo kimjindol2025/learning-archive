@@ -1,0 +1,36 @@
+# FreeLang Bootstrap - if/else 예제
+
+x = 10
+
+if (x > 5) {
+  print("x is greater than 5")
+}
+
+y = 3
+
+if (y > 5) {
+  print("y is greater than 5")
+} else {
+  print("y is not greater than 5")
+}
+
+# 중첩 if
+z = 15
+
+if (z > 10) {
+  print("z is big")
+  if (z > 20) {
+    print("z is very big")
+  } else {
+    print("z is medium")
+  }
+}
+
+# 변수로 결정
+age = 18
+
+if (age >= 18) {
+  print("You are an adult")
+} else {
+  print("You are a minor")
+}

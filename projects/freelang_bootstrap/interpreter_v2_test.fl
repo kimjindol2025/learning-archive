@@ -1,0 +1,364 @@
+// ================================================================
+// FreeLang v2 Interpreter - Test Suite
+// ================================================================
+//
+// 테스트: Process Scheduler + Global Synapse Engine 통합
+// 상태: Complete Test Coverage
+//
+// 구성:
+//   1. Process Creation & State Management
+//   2. Global Synapse Engine
+//   3. Process-Neuron Integration
+//   4. Scheduler & Round Robin
+//   5. Metrics Collection
+//
+// ================================================================
+
+import interpreter_v2
+
+// ============================================================
+// Test Utilities
+// ============================================================
+
+var testsPassed = 0
+var testsFailed = 0
+
+fn assert(condition: bool, message: string) {
+    if condition {
+        println("  ✅ PASS: " + message)
+        testsPassed = testsPassed + 1
+    } else {
+        println("  ❌ FAIL: " + message)
+        testsFailed = testsFailed + 1
+    }
+}
+
+fn testHeader(name: string) {
+    println("\n" + "=" * 70)
+    println("TEST: " + name)
+    println("=" * 70)
+}
+
+fn testFooter() {
+    println("")
+}
+
+// ============================================================
+// Test Suite 1: Process Creation & Management
+// ============================================================
+
+fn testProcessCreation() {
+    testHeader("Process Creation & Management")
+
+    interpreter_v2.initInterpreter()
+
+    // 프로세스 생성
+    var context1 = {
+        "variable_a": 10,
+        "variable_b": 20
+    }
+    var proc1 = interpreter_v2.createProcess(1, "Process1", 1, context1)
+
+    assert(proc1.pid == 1, "Process ID should be 1")
+    assert(proc1.name == "Process1", "Process name should be Process1")
+    assert(proc1.state == interpreter_v2.PROCESS_READY, "Initial state should be READY")
+    assert(len(proc1.stack) == 0, "Initial stack should be empty")
+
+    // 여러 프로세스 생성
+    var proc2 = interpreter_v2.createProcess(2, "Process2", 2, {})
+    var proc3 = interpreter_v2.createProcess(3, "Process3", 1, {})
+
+    assert(len(interpreter_v2.processTable) == 3, "Should have 3 processes")
+
+    testFooter()
+}
+
+fn testProcessStateTransition() {
+    testHeader("Process State Transition")
+
+    interpreter_v2.initInterpreter()
+    var proc = interpreter_v2.createProcess(1, "TestProc", 1, {})
+
+    // READY → RUNNING
+    var result = interpreter_v2.setProcessState(1, interpreter_v2.PROCESS_RUNNING)
+    assert(result == true, "State transition should succeed")
+    assert(interpreter_v2.getProcess(1).state == interpreter_v2.PROCESS_RUNNING, "State should be RUNNING")
+
+    // RUNNING → WAITING
+    interpreter_v2.setProcessState(1, interpreter_v2.PROCESS_WAITING)
+    assert(interpreter_v2.getProcess(1).state == interpreter_v2.PROCESS_WAITING, "State should be WAITING")
+
+    // WAITING → READY
+    interpreter_v2.setProcessState(1, interpreter_v2.PROCESS_READY)
+    assert(interpreter_v2.getProcess(1).state == interpreter_v2.PROCESS_READY, "State should be READY again")
+
+    testFooter()
+}
+
+fn testProcessStack() {
+    testHeader("Process Stack Operations")
+
+    interpreter_v2.initInterpreter()
+    var proc = interpreter_v2.createProcess(1, "StackProc", 1, {})
+
+    // Push
+    interpreter_v2.pushStack(1, 10)
+    interpreter_v2.pushStack(1, 20)
+    interpreter_v2.pushStack(1, 30)
+
+    assert(len(interpreter_v2.getProcess(1).stack) == 3, "Stack should have 3 elements")
+
+    // Pop
+    var val1 = interpreter_v2.popStack(1)
+    assert(val1 == 30, "Should pop 30 first (LIFO)")
+
+    var val2 = interpreter_v2.popStack(1)
+    assert(val2 == 20, "Should pop 20 second")
+
+    assert(len(interpreter_v2.getProcess(1).stack) == 1, "Stack should have 1 element left")
+
+    testFooter()
+}
+
+// ============================================================
+// Test Suite 2: Global Synapse Engine
+// ============================================================
+
+fn testNeuronRegistration() {
+    testHeader("Neuron Registration")
+
+    interpreter_v2.initInterpreter()
+
+    // Neuron 등록
+    var neuron1 = interpreter_v2.registerNeuron(1, interpreter_v2.NEURON_INPUT, [2, 3])
+    var neuron2 = interpreter_v2.registerNeuron(2, interpreter_v2.NEURON_HIDDEN, [3])
+    var neuron3 = interpreter_v2.registerNeuron(3, interpreter_v2.NEURON_OUTPUT, [])
+
+    assert(neuron1.id == 1, "Neuron ID should be 1")
+    assert(neuron1.type == interpreter_v2.NEURON_INPUT, "Type should be INPUT")
+    assert(len(neuron1.connections) == 2, "Should have 2 connections")
+    assert(neuron1.fireCount == 0, "Initial fire count should be 0")
+
+    testFooter()
+}
+
+fn testNeuronPropagation() {
+    testHeader("Neuron Propagation (Synapse)")
+
+    interpreter_v2.initInterpreter()
+
+    // 신경망 생성
+    var n1 = interpreter_v2.registerNeuron(1, interpreter_v2.NEURON_INPUT, [2])
+    var n2 = interpreter_v2.registerNeuron(2, interpreter_v2.NEURON_OUTPUT, [])
+
+    // 데이터 전파
+    var dataToPropagate = {
+        "signal": 1.0,
+        "intensity": 0.8
+    }
+
+    interpreter_v2.gse_propagate(1, dataToPropagate, 0.9)
+
+    // 확인
+    var sourceNeuron = interpreter_v2.neurons[1]
+    var targetNeuron = interpreter_v2.neurons[2]
+
+    assert(sourceNeuron.fireCount == 1, "Source neuron fire count should be 1")
+    assert(sourceNeuron.state["signal"] == 1.0, "State should be propagated to source")
+    assert(len(targetNeuron.state) > 0, "Target neuron should receive state")
+
+    testFooter()
+}
+
+// ============================================================
+// Test Suite 3: Process-Neuron Integration
+// ============================================================
+
+fn testProcessNeuronAttachment() {
+    testHeader("Process-Neuron Attachment")
+
+    interpreter_v2.initInterpreter()
+
+    // 프로세스와 Neuron 생성
+    var proc = interpreter_v2.createProcess(1, "AttachProc", 1, {})
+    var neuron = interpreter_v2.registerNeuron(1, interpreter_v2.NEURON_INPUT, [])
+
+    // 연결
+    var result = interpreter_v2.attachProcessToNeuron(1, 1)
+
+    assert(result == true, "Attachment should succeed")
+    assert(len(interpreter_v2.neurons[1].attachedProcesses) == 1, "Neuron should have 1 attached process")
+    assert(len(interpreter_v2.getProcess(1).attachedNeurons) == 1, "Process should have 1 attached neuron")
+
+    testFooter()
+}
+
+fn testProcessFiresNeuron() {
+    testHeader("Process Fires Neuron")
+
+    interpreter_v2.initInterpreter()
+
+    // 설정
+    var proc = interpreter_v2.createProcess(1, "FireProc", 1, {})
+    var neuron = interpreter_v2.registerNeuron(1, interpreter_v2.NEURON_INPUT, [])
+
+    // 프로세스를 RUNNING으로 설정
+    interpreter_v2.setProcessState(1, interpreter_v2.PROCESS_RUNNING)
+
+    // 프로세스가 Neuron 발화
+    var data = {"signal": 1.0}
+    var result = interpreter_v2.processFiresNeuron(1, 1, data, 0.9)
+
+    assert(result == true, "Process should successfully fire neuron")
+    assert(interpreter_v2.neurons[1].fireCount == 1, "Neuron should have fired once")
+    assert(interpreter_v2.neurons[1].state["signal"] == 1.0, "Neuron state should be updated")
+
+    testFooter()
+}
+
+fn testNeuronActivatesProcess() {
+    testHeader("Neuron Activates Process")
+
+    interpreter_v2.initInterpreter()
+
+    // 설정
+    var proc = interpreter_v2.createProcess(1, "ActivateProc", 1, {})
+    var neuron = interpreter_v2.registerNeuron(1, interpreter_v2.NEURON_INPUT, [])
+
+    interpreter_v2.attachProcessToNeuron(1, 1)
+
+    // 프로세스를 WAITING으로 설정
+    interpreter_v2.setProcessState(1, interpreter_v2.PROCESS_WAITING)
+
+    // Neuron이 프로세스를 깨우기
+    var activatedPids = interpreter_v2.neuronActivatesProcess(1)
+
+    assert(len(activatedPids) == 1, "Should activate 1 process")
+    assert(activatedPids[0] == 1, "Should activate process 1")
+    assert(interpreter_v2.getProcess(1).state == interpreter_v2.PROCESS_READY, "Process should be READY")
+
+    testFooter()
+}
+
+// ============================================================
+// Test Suite 4: Scheduler
+// ============================================================
+
+fn testScheduler() {
+    testHeader("Process Scheduler (Round Robin)")
+
+    interpreter_v2.initInterpreter()
+
+    // 프로세스 3개 생성
+    var p1 = interpreter_v2.createProcess(1, "Proc1", 1, {})
+    var p2 = interpreter_v2.createProcess(2, "Proc2", 1, {})
+    var p3 = interpreter_v2.createProcess(3, "Proc3", 1, {})
+
+    // Ready Queue에 추가
+    interpreter_v2.enqueueReady(1)
+    interpreter_v2.enqueueReady(2)
+    interpreter_v2.enqueueReady(3)
+
+    assert(len(interpreter_v2.scheduler.readyQueue) == 3, "Ready queue should have 3 processes")
+
+    // 스케줄링 실행 (3 cycles)
+    interpreter_v2.run(3)
+
+    // 각 프로세스가 최소 1회 실행되었는지 확인
+    assert(interpreter_v2.getProcess(1).executedInstructions > 0, "Process 1 should be executed")
+    assert(interpreter_v2.getProcess(2).executedInstructions > 0, "Process 2 should be executed")
+    assert(interpreter_v2.getProcess(3).executedInstructions > 0, "Process 3 should be executed")
+
+    testFooter()
+}
+
+// ============================================================
+// Test Suite 5: Metrics Collection
+// ============================================================
+
+fn testMetricsCollection() {
+    testHeader("Metrics Collection")
+
+    interpreter_v2.initInterpreter()
+
+    // 프로세스 생성
+    var p1 = interpreter_v2.createProcess(1, "Proc1", 1, {})
+    var p2 = interpreter_v2.createProcess(2, "Proc2", 1, {})
+
+    // Neuron 생성
+    var n1 = interpreter_v2.registerNeuron(1, interpreter_v2.NEURON_INPUT, [2])
+    var n2 = interpreter_v2.registerNeuron(2, interpreter_v2.NEURON_OUTPUT, [])
+
+    // 일부 동작 수행
+    interpreter_v2.setProcessState(1, interpreter_v2.PROCESS_RUNNING)
+    interpreter_v2.setProcessState(2, interpreter_v2.PROCESS_WAITING)
+    interpreter_v2.gse_propagate(1, {}, 0.5)
+
+    // 메트릭 수집
+    var metrics = interpreter_v2.collectMetrics()
+
+    assert(metrics.totalProcesses == 2, "Should have 2 processes")
+    assert(metrics.totalNeurons == 2, "Should have 2 neurons")
+    assert(metrics.runningProcesses == 1, "Should have 1 running process")
+    assert(metrics.waitingProcesses == 1, "Should have 1 waiting process")
+    assert(metrics.activatedNeurons == 1, "Should have 1 activated neuron")
+
+    println("  Metrics: " + metrics.totalProcesses + " processes, " + metrics.totalNeurons + " neurons")
+
+    testFooter()
+}
+
+// ============================================================
+// Main Test Execution
+// ============================================================
+
+fn main() {
+    println("╔" + "=" * 68 + "╗")
+    println("║ FreeLang v2 Interpreter - Test Suite                                 ║")
+    println("╚" + "=" * 68 + "╝")
+
+    // Test Suite 1: Process Management
+    testProcessCreation()
+    testProcessStateTransition()
+    testProcessStack()
+
+    // Test Suite 2: Global Synapse Engine
+    testNeuronRegistration()
+    testNeuronPropagation()
+
+    // Test Suite 3: Integration
+    testProcessNeuronAttachment()
+    testProcessFiresNeuron()
+    testNeuronActivatesProcess()
+
+    // Test Suite 4: Scheduler
+    testScheduler()
+
+    // Test Suite 5: Metrics
+    testMetricsCollection()
+
+    // Summary
+    println("\n" + "=" * 70)
+    println("TEST SUMMARY")
+    println("=" * 70)
+    println("Passed: " + testsPassed + " ✅")
+    println("Failed: " + testsFailed + " ❌")
+    println("Total:  " + (testsPassed + testsFailed))
+
+    var successRate = (testsPassed * 100) / (testsPassed + testsFailed)
+    println("Success Rate: " + successRate + "%")
+
+    if testsFailed == 0 {
+        println("\n🎉 All tests passed!")
+    } else {
+        println("\n⚠️ Some tests failed")
+    }
+
+    println("=" * 70)
+}
+
+// ============================================================
+// Run Tests
+// ============================================================
+
+main()
