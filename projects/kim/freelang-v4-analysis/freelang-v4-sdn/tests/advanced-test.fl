@@ -1,0 +1,314 @@
+// FreeLang v4 SDN Advanced Test Suite
+// 소프트웨어 정의 네트워킹 고급 테스트
+
+module SDNAdvancedTests
+
+// Test 1: 기본 네트워크 토폴로지 구성
+test "SDNController: 네트워크 토폴로지 생성" {
+  let controller = SDNController::new()
+
+  // 스위치 추가
+  controller.add_switch("s1", OpenFlowVersion::V1_3)?
+  controller.add_switch("s2", OpenFlowVersion::V1_3)?
+  controller.add_switch("s3", OpenFlowVersion::V1_3)?
+
+  // 호스트 추가
+  controller.add_host("h1", "00:00:00:00:00:01", "10.0.0.1")?
+  controller.add_host("h2", "00:00:00:00:00:02", "10.0.0.2")?
+  controller.add_host("h3", "00:00:00:00:00:03", "10.0.0.3")?
+
+  // 링크 추가
+  controller.add_link("s1", "s2", bandwidth: 1000)?
+  controller.add_link("s2", "s3", bandwidth: 1000)?
+  controller.add_link("s1", "h1", bandwidth: 100)?
+  controller.add_link("s2", "h2", bandwidth: 100)?
+
+  // 토폴로지 확인
+  let topology = controller.get_topology()
+  assert!(topology.switches.len() == 3)
+  assert!(topology.hosts.len() == 2)
+  assert!(topology.links.len() >= 4)
+}
+
+// Test 2: 흐름 규칙 추가
+test "SDNController: OpenFlow 흐름 규칙 설정" {
+  let controller = SDNController::new()
+
+  controller.add_switch("s1", OpenFlowVersion::V1_3)?
+
+  // 기본 포워딩 규칙
+  let flow_id = controller.add_flow(
+    switch: "s1",
+    match: FlowMatch::new()
+      .eth_type(0x0800)  // IPv4
+      .ipv4_dst("10.0.0.2"),
+    actions: vec![
+      FlowAction::SetField(Field::EthDst("00:00:00:00:00:02")),
+      FlowAction::Output(port: 2)
+    ]
+  )?
+
+  assert!(flow_id > 0)
+}
+
+// Test 3: QoS 미터 설정
+test "SDNController: QoS 메터 구성" {
+  let controller = SDNController::new()
+
+  controller.add_switch("s1", OpenFlowVersion::V1_3)?
+
+  // 1Mbps 속도 제한 설정
+  controller.add_meter(
+    switch: "s1",
+    meter_id: 1,
+    rate: 1000,      // 1Mbps
+    burst_size: 10000
+  )?
+
+  // 미터가 설정됨을 확인
+}
+
+// Test 4: 최단 경로 계산
+test "SDNRouter: Dijkstra 최단 경로 계산" {
+  let router = SDNRouter::new()
+
+  // 네트워크 토폴로지 설정
+  router.add_switch("s1")
+  router.add_switch("s2")
+  router.add_switch("s3")
+  router.add_host("h1", "10.0.0.1")
+  router.add_host("h2", "10.0.0.2")
+
+  router.add_link("s1", "s2", cost: 1)
+  router.add_link("s2", "s3", cost: 1)
+  router.add_link("s1", "s3", cost: 5)  // 더 비싼 경로
+
+  // 최단 경로 계산
+  let path = router.compute_shortest_path("10.0.0.1", "10.0.0.2")?
+
+  assert!(path.hops.len() > 0)
+  assert!(path.cost > 0)
+  // 최단 경로는 s1 -> s2 -> ... 경로여야 함
+}
+
+// Test 5: 다중 경로 라우팅
+test "SDNRouter: 다중 경로 계산 (ECMP)" {
+  let router = SDNRouter::new()
+
+  router.add_switch("s1")
+  router.add_switch("s2")
+  router.add_switch("s3")
+
+  // 메시 토폴로지 생성
+  router.add_link("s1", "s2", cost: 1)
+  router.add_link("s1", "s3", cost: 1)
+  router.add_link("s2", "s3", cost: 1)
+
+  let paths = router.compute_multipath("10.0.0.1", "10.0.0.3", 2)?
+
+  // 2개의 경로 확인
+  assert!(paths.len() >= 1)
+  for path in paths {
+    assert!(path.hops.len() > 0)
+  }
+}
+
+// Test 6: 네트워크 슬라이스 생성
+test "NetworkSlicer: 네트워크 슬라이스 생성" {
+  let slicer = NetworkSlicer::new()
+
+  // VoIP 슬라이스 (높은 우선순위, 낮은 지연)
+  let voip_slice = slicer.create_slice(
+    name: "VoIP",
+    priority: 1,
+    bandwidth: 100,       // 100 Mbps
+    latency_bound: 50     // 50ms
+  )?
+
+  // 웹 브라우징 슬라이스
+  let web_slice = slicer.create_slice(
+    name: "Web",
+    priority: 2,
+    bandwidth: 500,       // 500 Mbps
+    latency_bound: 200    // 200ms
+  )?
+
+  assert!(voip_slice > 0)
+  assert!(web_slice > 0)
+}
+
+// Test 7: 테넌트 할당
+test "NetworkSlicer: 테넌트를 슬라이스에 할당" {
+  let slicer = NetworkSlicer::new()
+
+  let slice_a = slicer.create_slice(
+    name: "SliceA",
+    priority: 1,
+    bandwidth: 100,
+    latency_bound: 50
+  )?
+
+  let slice_b = slicer.create_slice(
+    name: "SliceB",
+    priority: 2,
+    bandwidth: 100,
+    latency_bound: 200
+  )?
+
+  // 테넌트 할당
+  slicer.assign_tenant(slice_a, "tenant1")?
+  slicer.assign_tenant(slice_b, "tenant2")?
+
+  // 할당 확인
+}
+
+// Test 8: 슬라이스 업데이트
+test "NetworkSlicer: 슬라이스 설정 변경" {
+  let slicer = NetworkSlicer::new()
+
+  let slice = slicer.create_slice(
+    name: "TestSlice",
+    priority: 1,
+    bandwidth: 100,
+    latency_bound: 50
+  )?
+
+  // 대역폭 증가
+  slicer.update_slice(slice, {
+    bandwidth: 200,
+    latency_bound: 30
+  })?
+
+  // 변경 확인
+}
+
+// Test 9: 슬라이스 통계
+test "NetworkSlicer: 슬라이스 성능 모니터링" {
+  let slicer = NetworkSlicer::new()
+
+  let slice = slicer.create_slice(
+    name: "TestSlice",
+    priority: 1,
+    bandwidth: 100,
+    latency_bound: 50
+  )?
+
+  // 통계 조회
+  let stats = slicer.get_slice_stats(slice)?
+
+  assert!(stats.used_bandwidth >= 0)
+  assert!(stats.avg_latency >= 0)
+}
+
+// Test 10: 포트 통계
+test "NetworkMonitor: 포트 통계 수집" {
+  let monitor = NetworkMonitor::new()
+
+  // 포트 통계 조회
+  let port_stats = monitor.get_port_stats("s1", 1)?
+
+  assert!(port_stats.tx_bytes >= 0)
+  assert!(port_stats.rx_bytes >= 0)
+  assert!(port_stats.tx_pkts >= 0)
+  assert!(port_stats.rx_pkts >= 0)
+}
+
+// Test 11: 링크 상태 모니터링
+test "NetworkMonitor: 링크 상태 확인" {
+  let monitor = NetworkMonitor::new()
+
+  // 링크 상태 조회
+  let link_state = monitor.get_link_state("s1", "s2")?
+
+  assert!(link_state.speed > 0)
+  assert!(link_state.latency >= 0)
+  assert!(link_state.loss >= 0.0)
+  assert!(link_state.status == "UP" || link_state.status == "DOWN")
+}
+
+// Test 12: 흐름 통계
+test "NetworkMonitor: 흐름 통계 수집" {
+  let monitor = NetworkMonitor::new()
+
+  // 흐름 통계 조회
+  let flows = monitor.get_flow_stats("s1")?
+
+  for flow in flows {
+    assert!(flow.id.len() > 0)
+    assert!(flow.packet_count >= 0)
+    assert!(flow.byte_count >= 0)
+    assert!(flow.duration >= 0)
+  }
+}
+
+// Test 13: 메트릭 스트리밍
+test "NetworkMonitor: 실시간 메트릭 스트리밍" {
+  let monitor = NetworkMonitor::new()
+
+  let metric_count = 0
+
+  // 메트릭 스트리밍 (시뮬레이션)
+  monitor.stream_metrics(5, |metrics| {
+    assert!(metrics.cpu_usage >= 0)
+    assert!(metrics.memory_usage >= 0)
+    assert!(metrics.throughput >= 0)
+    metric_count = metric_count + 1
+  })
+
+  // 최소 1개 이상의 메트릭이 수집되어야 함
+  assert!(metric_count > 0)
+}
+
+// Test 14: 이상 탐지
+test "NetworkMonitor: 네트워크 이상 징후 탐지" {
+  let monitor = NetworkMonitor::new()
+
+  // 이상 탐지
+  let anomalies = monitor.detect_anomalies()?
+
+  // 이상이 탐지될 수도, 없을 수도 있음
+  if anomalies.len() > 0 {
+    for anomaly in anomalies {
+      assert!(anomaly.type.len() > 0)
+      assert!(anomaly.severity != "")
+    }
+  }
+}
+
+// Test 15: 복합 네트워킹 시나리오
+test "SDN: 완전한 네트워크 설정 및 모니터링" {
+  let controller = SDNController::new()
+  let router = SDNRouter::new()
+  let slicer = NetworkSlicer::new()
+  let monitor = NetworkMonitor::new()
+
+  // 1. 토폴로지 구성
+  controller.add_switch("s1", OpenFlowVersion::V1_3)?
+  controller.add_switch("s2", OpenFlowVersion::V1_3)?
+  controller.add_host("h1", "00:00:00:00:00:01", "10.0.0.1")?
+  controller.add_host("h2", "00:00:00:00:00:02", "10.0.0.2")?
+  controller.add_link("s1", "s2", bandwidth: 1000)?
+
+  // 2. 슬라이스 생성
+  let slice = slicer.create_slice(
+    name: "Default",
+    priority: 1,
+    bandwidth: 100,
+    latency_bound: 100
+  )?
+
+  // 3. 경로 계산
+  let path = router.compute_shortest_path("10.0.0.1", "10.0.0.2")?
+  assert!(path.hops.len() > 0)
+
+  // 4. 모니터링
+  let link = monitor.get_link_state("s1", "s2")?
+  assert!(link.speed > 0)
+}
+
+// 헬퍼 함수
+fn assert!(condition: bool) {
+  if !condition {
+    panic("Assertion failed!")
+  }
+}

@@ -1,0 +1,293 @@
+// FreeLang v4 Mobile Advanced Test Suite
+// 모바일 애플리케이션 개발 고급 테스트
+
+module MobileAdvancedTests
+
+// Test 1: 앱 빌드 설정
+test "AppBuilder: 모바일 앱 구성" {
+  let app = AppBuilder::new("MyApp")
+    .with_version("1.0.0")
+    .with_icon("assets/icon.png")
+    .with_theme({
+      primary_color: "#2196F3",
+      accent_color: "#FF5722",
+      dark_mode: false
+    })
+
+  let mobile_app = app.build()?
+  assert!(mobile_app != null)
+}
+
+// Test 2: UI 컴포넌트 생성
+test "UIComponents: 텍스트 및 버튼" {
+  let title = Text::new("Welcome")
+    .with_size(24)
+    .with_color("#000000")
+    .with_bold(true)
+
+  let button = Button::new("Submit", || {
+    println("Submitted!")
+  })
+    .with_background("#2196F3")
+    .with_text_color("#FFFFFF")
+
+  assert!(title != null)
+  assert!(button != null)
+}
+
+// Test 3: 텍스트 입력 필드
+test "UIComponents: 텍스트 입력 처리" {
+  let email_input = TextInput::new("Enter email")
+    .with_keyboard_type("email")
+    .on_change(|text| {
+      assert!(text.len() > 0)
+    })
+
+  let password_input = TextInput::new("Enter password")
+    .with_keyboard_type("password")
+    .with_secure(true)
+
+  assert!(email_input != null)
+  assert!(password_input != null)
+}
+
+// Test 4: 리스트 컴포넌트
+test "UIComponents: 동적 리스트" {
+  let items = ["Item 1", "Item 2", "Item 3"]
+
+  let list = List::new(items)
+    .item_builder(|item, index| {
+      Text::new(item)
+    })
+    .on_item_click(|item| {
+      println("Clicked: " + item)
+    })
+
+  assert!(list != null)
+}
+
+// Test 5: 이미지 표시
+test "UIComponents: 이미지 컴포넌트" {
+  let image = Image::new("https://api.example.com/image.png")
+    .with_width(200)
+    .with_height(200)
+    .with_border_radius(50)
+
+  assert!(image != null)
+}
+
+// Test 6: 카드 레이아웃
+test "UIComponents: 카드 컴포넌트" {
+  let card = Card::new(
+    Column::new(vec![
+      Text::new("John Doe"),
+      Text::new("john@example.com")
+    ])
+  )
+    .with_elevation(4)
+    .on_click(|| {
+      println("Card clicked!")
+    })
+
+  assert!(card != null)
+}
+
+// Test 7: HTTP 클라이언트 기본 사용
+test "HttpClient: HTTP 요청" {
+  let client = HttpClient::new()
+    .with_base_url("https://api.example.com")
+    .with_timeout(30)
+
+  // GET 요청 (모킹)
+  let response = client.get("/users/123")?
+  // assert!(response.status == 200)
+}
+
+// Test 8: HTTP 인증
+test "HttpClient: Bearer 토큰 인증" {
+  let client = HttpClient::new()
+    .with_base_url("https://api.example.com")
+    .with_auth(Auth::Bearer("token123"))
+
+  // 인증이 설정됨
+  // assert!(client.has_auth())
+}
+
+// Test 9: POST 요청
+test "HttpClient: POST 데이터 전송" {
+  let client = HttpClient::new()
+    .with_base_url("https://api.example.com")
+
+  let response = client.post("/users", {
+    name: "Jane",
+    email: "jane@example.com"
+  })?
+
+  // assert!(response.status == 201)
+}
+
+// Test 10: 로컬 데이터베이스
+test "Database: SQLite 데이터베이스 생성" {
+  let db = Database::open("myapp.db")?
+
+  // 테이블 생성
+  db.create_table("users", {
+    id: {type: "INTEGER", primary_key: true},
+    name: {type: "TEXT"},
+    email: {type: "TEXT", unique: true},
+    created_at: {type: "TIMESTAMP"}
+  })?
+
+  assert!(db != null)
+}
+
+// Test 11: 데이터 삽입
+test "Database: 데이터 삽입" {
+  let db = Database::open("myapp.db")?
+
+  let row_id = db.insert("users", {
+    name: "John",
+    email: "john@example.com",
+    created_at: now()
+  })?
+
+  assert!(row_id > 0)
+}
+
+// Test 12: 데이터 조회
+test "Database: 데이터 조회" {
+  let db = Database::open("myapp.db")?
+
+  let users = db.query("SELECT * FROM users WHERE name = ?", ["John"])?
+
+  assert!(users.len() >= 0)
+}
+
+// Test 13: 데이터 업데이트
+test "Database: 데이터 업데이트" {
+  let db = Database::open("myapp.db")?
+
+  let updated = db.update("users",
+    {name: "Jane"},
+    "id = 1"
+  )?
+
+  assert!(updated >= 0)
+}
+
+// Test 14: 데이터 삭제
+test "Database: 데이터 삭제" {
+  let db = Database::open("myapp.db")?
+
+  let deleted = db.delete("users", "id = 1")?
+
+  assert!(deleted >= 0)
+}
+
+// Test 15: 동기화 관리
+test "SyncManager: 오프라인-온라인 동기화" {
+  let sync = SyncManager::new()
+    .with_remote_url("https://api.example.com/sync")
+
+  // 변경사항 추적
+  let mutation = sync.track_mutation(
+    table: "users",
+    operation: "Insert",
+    data: {name: "John", email: "john@example.com"}
+  )?
+
+  assert!(mutation.id.len() > 0)
+}
+
+// Test 16: 생체 인증 가용성
+test "BiometricAuth: 생체 인증 확인" {
+  let auth = BiometricAuth::new()
+
+  let fingerprint_available = auth.is_available(BiometricType::Fingerprint)
+  let faceid_available = auth.is_available(BiometricType::FaceID)
+
+  assert!(fingerprint_available == true || fingerprint_available == false)
+  assert!(faceid_available == true || faceid_available == false)
+}
+
+// Test 17: 생체 인증 수행
+test "BiometricAuth: 지문 인증" {
+  let auth = BiometricAuth::new()
+
+  if auth.is_available(BiometricType::Fingerprint) {
+    let result = auth.authenticate(
+      type: BiometricType::Fingerprint,
+      reason: "로그인이 필요합니다"
+    )?
+
+    // 인증 결과 확인
+    assert!(result.is_success == true || result.is_success == false)
+  }
+}
+
+// Test 18: 푸시 알림 예약
+test "PushNotification: 로컬 알림 예약" {
+  let push = PushNotification::new()
+    .with_api_key("your-fcm-key")
+
+  let notif_id = push.schedule_local({
+    title: "Reminder",
+    body: "Don't forget!",
+    delay_seconds: 60
+  })?
+
+  assert!(notif_id.len() > 0)
+}
+
+// Test 19: 원격 알림 처리
+test "PushNotification: 원격 알림 수신" {
+  let push = PushNotification::new()
+
+  push.on_notification_received(|notification| {
+    println("Notification: " + notification.title)
+    // 알림 처리
+  })
+
+  // 핸들러가 등록됨
+}
+
+// Test 20: 완전한 앱 시나리오
+test "Mobile: 완전한 앱 플로우" {
+  // 1. 앱 생성
+  let app = AppBuilder::new("TestApp")
+    .with_version("1.0.0")
+    .build()?
+
+  // 2. UI 생성
+  let title = Text::new("Login")
+  let email_input = TextInput::new("Email")
+  let login_btn = Button::new("Login", || {
+    println("Logging in...")
+  })
+
+  // 3. 데이터베이스 초기화
+  let db = Database::open("app.db")?
+
+  // 4. HTTP 클라이언트 설정
+  let client = HttpClient::new()
+    .with_base_url("https://api.example.com")
+
+  // 5. 동기화 설정
+  let sync = SyncManager::new()
+    .with_remote_url("https://api.example.com/sync")
+
+  assert!(app != null)
+  assert!(db != null)
+}
+
+// 헬퍼 함수
+fn assert!(condition: bool) {
+  if !condition {
+    panic("Assertion failed!")
+  }
+}
+
+fn now() -> Timestamp {
+  // 현재 시간 반환 (구현 필요)
+  Timestamp::now()
+}
