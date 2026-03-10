@@ -1,0 +1,15 @@
+// Check even and odd
+
+fn is_even(n: i32): bool {
+    return n % 2 == 0;
+}
+
+fn main(): i32 {
+    if is_even(42) {
+        println("42 is even");
+        return 1;
+    } else {
+        println("42 is odd");
+        return 0;
+    }
+}

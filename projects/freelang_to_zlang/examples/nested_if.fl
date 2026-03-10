@@ -1,0 +1,21 @@
+// Nested if statements
+
+fn classify(score: i32): i32 {
+    if score >= 90 {
+        println("A");
+        return 10;
+    } else if score >= 80 {
+        println("B");
+        return 8;
+    } else if score >= 70 {
+        println("C");
+        return 6;
+    } else {
+        println("F");
+        return 0;
+    }
+}
+
+fn main(): i32 {
+    return classify(85);
+}

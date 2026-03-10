@@ -1,0 +1,13 @@
+// Array operations
+
+fn main(): i32 {
+    let arr: [i32] = [1, 2, 3, 4, 5];
+    let sum: i32 = 0;
+    
+    for num in arr {
+        sum = sum + num;
+    }
+    
+    println(sum);
+    return sum;
+}

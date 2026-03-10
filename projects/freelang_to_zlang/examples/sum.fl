@@ -1,0 +1,10 @@
+// Sum of numbers using for-in loop
+
+fn main(): i32 {
+    let sum: i32 = 0;
+    for i in range(1, 10) {
+        sum = sum + i;
+    }
+    println(sum);
+    return sum;
+}

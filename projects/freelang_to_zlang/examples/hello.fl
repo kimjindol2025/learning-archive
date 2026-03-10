@@ -1,0 +1,6 @@
+// Hello World in FreeLang
+
+fn main(): i32 {
+    println("Hello, World!");
+    return 0;
+}
